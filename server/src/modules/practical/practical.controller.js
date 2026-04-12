@@ -53,6 +53,9 @@ export async function getPracticals(req, res, next) {
         const submission = submissions.find(s => s.practicalId.toString() === p._id.toString());
         pObj.submissionStatus = submission ? submission.status : 'not_started';
         pObj.isCorrect = submission ? submission.isCorrect : false;
+        pObj.isFinal = submission ? submission.isFinal : false;
+        pObj.codeSubmitted = submission ? submission.codeSubmitted : null;
+        pObj.output = submission ? submission.output : null;
         return pObj;
       });
     } else {
@@ -101,6 +104,11 @@ export async function submitPractical(req, res, next) {
     const practical = await Practical.findById(practicalId);
     if (!practical) {
       return res.status(404).json({ success: false, message: 'Practical not found' });
+    }
+
+    const previousSubmission = await PracticalSubmission.findOne({ practicalId, studentId: req.user._id });
+    if (previousSubmission && previousSubmission.isFinal) {
+      return res.status(400).json({ success: false, message: 'You have already finalized your submission.' });
     }
 
     let actualOutput = '';

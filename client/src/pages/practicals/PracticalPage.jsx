@@ -145,8 +145,8 @@ export default function PracticalPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span className="badge badge-primary">{p.subject}</span>
                 {user.role === 'student' && (
-                  <span className={`badge ${p.isCorrect ? 'badge-success' : (p.submissionStatus === 'evaluated' ? 'badge-danger' : 'badge-warning')}`}>
-                    {p.isCorrect ? 'Completed' : (p.submissionStatus === 'evaluated' ? 'Attempted' : 'Pending')}
+                  <span className={`badge ${p.isFinal ? 'badge-success' : (p.submissionStatus === 'evaluated' ? 'badge-warning' : 'badge-danger')}`}>
+                    {p.isFinal ? 'Submitted' : (p.submissionStatus === 'evaluated' ? 'Attempted' : 'Pending')}
                   </span>
                 )}
               </div>
@@ -157,11 +157,11 @@ export default function PracticalPage() {
 
               {user.role === 'student' && (
                 <button 
-                  className={p.isCorrect ? 'btn-outline' : 'btn-primary'} 
+                  className={p.isFinal ? 'btn-outline' : 'btn-primary'} 
                   onClick={() => setActivePractical(p)}
                   style={{ width: '100%' }}
                 >
-                  {p.isCorrect ? 'Review Code' : 'Solve & Execute'}
+                  {p.isFinal ? 'Review Solution' : 'Solve & Execute'}
                 </button>
               )}
               {user.role === 'teacher' && (
