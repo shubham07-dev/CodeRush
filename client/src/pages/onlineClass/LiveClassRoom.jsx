@@ -85,93 +85,106 @@ export default function LiveClassRoom({ classData, onLeave }) {
     const baseURL = (import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/v1').replace('/api/v1', '');
     socketRef.current = io(baseURL);
 
+    const attachSocketListeners = () => {
+      socketRef.current.on('user-joined', async (socketId, role, userId) => {
+        if (role === 'student') setConnectedStudents(prev => prev + 1);
+        
+        const peer = new RTCPeerConnection(STUN_SERVERS);
+        peersRef.current[socketId] = peer;
+
+        if (user.role === 'teacher' || user.role === 'admin') {
+          socketRef.current.emit('draw-text', { classId: classData._id, textElements });
+        }
+
+        // Only attach tracks if we successfully got a local stream
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(track => {
+            peer.addTrack(track, localStreamRef.current);
+          });
+        }
+
+        peer.ontrack = (event) => {
+          setRemoteStreams(prev => {
+            if (prev.find(p => p.socketId === socketId)) return prev;
+            return [...prev, { socketId, stream: event.streams[0], role, label: role === 'teacher' || role === 'admin' ? 'Teacher' : `Student ${socketId.substring(0,4)}` }];
+          });
+        };
+
+        peer.onicecandidate = (event) => {
+          if (event.candidate) {
+            socketRef.current.emit('webrtc-ice-candidate', { target: socketId, caller: socketRef.current.id, candidate: event.candidate });
+          }
+        };
+
+        const offer = await peer.createOffer();
+        await peer.setLocalDescription(offer);
+        socketRef.current.emit('webrtc-offer', { target: socketId, caller: socketRef.current.id, offer, role: user.role });
+      });
+
+      socketRef.current.on('webrtc-offer', async (payload) => {
+        const peer = new RTCPeerConnection(STUN_SERVERS);
+        peersRef.current[payload.caller] = peer; 
+
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(track => {
+            peer.addTrack(track, localStreamRef.current);
+          });
+        }
+
+        peer.ontrack = (event) => {
+          setRemoteStreams(prev => {
+            if (prev.find(p => p.socketId === payload.caller)) return prev;
+            return [...prev, { socketId: payload.caller, stream: event.streams[0], role: payload.role, label: payload.role === 'teacher' || payload.role === 'admin' ? 'Teacher' : `Student ${payload.caller.substring(0,4)}` }];
+          });
+        };
+
+        peer.onicecandidate = (event) => {
+          if (event.candidate) {
+            socketRef.current.emit('webrtc-ice-candidate', { target: payload.caller, caller: socketRef.current.id, candidate: event.candidate });
+          }
+        };
+
+        await peer.setRemoteDescription(new RTCSessionDescription(payload.offer));
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        
+        socketRef.current.emit('webrtc-answer', { target: payload.caller, caller: socketRef.current.id, answer });
+      });
+
+      socketRef.current.on('webrtc-answer', async (payload) => {
+        const peer = peersRef.current[payload.caller];
+        if (peer) {
+          await peer.setRemoteDescription(new RTCSessionDescription(payload.answer));
+        }
+      });
+
+      socketRef.current.on('webrtc-ice-candidate', async (payload) => {
+        const peer = peersRef.current[payload.caller];
+        if (peer && payload.candidate) {
+          await peer.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(e => console.log(e));
+        }
+      });
+
+      socketRef.current.on('connect', () => {
+        socketRef.current.emit('join-class', classData._id, user.role, user._id);
+      });
+
+      if (socketRef.current.connected) {
+        socketRef.current.emit('join-class', classData._id, user.role, user._id);
+      }
+    };
+
     // Request Media FIRST to prevent race conditions with incoming WebRTC offers
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => {
         setLocalStream(stream);
         localStreamRef.current = stream;
-
-        // NOW attach listeners that depend on stream
-        socketRef.current.on('user-joined', async (socketId, role, userId) => {
-          if (role === 'student') setConnectedStudents(prev => prev + 1);
-          
-          const peer = new RTCPeerConnection(STUN_SERVERS);
-          peersRef.current[socketId] = peer;
-
-          if (user.role === 'teacher') {
-            socketRef.current.emit('draw-text', { classId: classData._id, textElements });
-          }
-
-          stream.getTracks().forEach(track => {
-            peer.addTrack(track, stream);
-          });
-
-          peer.ontrack = (event) => {
-            setRemoteStreams(prev => {
-              if (prev.find(p => p.socketId === socketId)) return prev;
-              return [...prev, { socketId, stream: event.streams[0], role, label: role === 'teacher' ? 'Teacher' : `Student ${socketId.substring(0,4)}` }];
-            });
-          };
-
-          peer.onicecandidate = (event) => {
-            if (event.candidate) {
-              socketRef.current.emit('webrtc-ice-candidate', { target: socketId, caller: socketRef.current.id, candidate: event.candidate });
-            }
-          };
-
-          const offer = await peer.createOffer();
-          await peer.setLocalDescription(offer);
-          socketRef.current.emit('webrtc-offer', { target: socketId, caller: socketRef.current.id, offer, role: user.role });
-        });
-
-        socketRef.current.on('webrtc-offer', async (payload) => {
-          const peer = new RTCPeerConnection(STUN_SERVERS);
-          peersRef.current[payload.caller] = peer; 
-
-          stream.getTracks().forEach(track => {
-            peer.addTrack(track, stream);
-          });
-
-          peer.ontrack = (event) => {
-            setRemoteStreams(prev => {
-              if (prev.find(p => p.socketId === payload.caller)) return prev;
-              return [...prev, { socketId: payload.caller, stream: event.streams[0], role: payload.role, label: payload.role === 'teacher' ? 'Teacher' : `Student ${payload.caller.substring(0,4)}` }];
-            });
-          };
-
-          peer.onicecandidate = (event) => {
-            if (event.candidate) {
-              socketRef.current.emit('webrtc-ice-candidate', { target: payload.caller, caller: socketRef.current.id, candidate: event.candidate });
-            }
-          };
-
-          await peer.setRemoteDescription(new RTCSessionDescription(payload.offer));
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-          
-          socketRef.current.emit('webrtc-answer', { target: payload.caller, caller: socketRef.current.id, answer });
-        });
-
-        socketRef.current.on('webrtc-answer', async (payload) => {
-          const peer = peersRef.current[payload.caller];
-          if (peer) {
-            await peer.setRemoteDescription(new RTCSessionDescription(payload.answer));
-          }
-        });
-
-        socketRef.current.on('webrtc-ice-candidate', async (payload) => {
-          const peer = peersRef.current[payload.caller];
-          if (peer && payload.candidate) {
-            await peer.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(e => console.log(e));
-          }
-        });
-
-        // Finally, emit join-class ONLY AFTER media is secured and listeners ready
-        socketRef.current.emit('join-class', classData._id, user.role, user._id);
-
+        attachSocketListeners();
       }).catch(err => {
         console.error("Mic/Cam Access Denied:", err);
-        alert("Please allow camera/mic permissions to participate effectively.");
+        alert("Please allow camera/mic permissions to broadcast your video. You will still receive the Teacher's stream.");
+        // Still attach socket listeners so they can be a viewer!
+        attachSocketListeners();
       });
 
     socketRef.current.on('user-disconnected', (socketId) => {
@@ -254,7 +267,7 @@ export default function LiveClassRoom({ classData, onLeave }) {
   };
 
   const toggleScreenShare = async () => {
-    if (!isScreenSharing && user.role === 'teacher') {
+    if (!isScreenSharing && (user.role === 'teacher' || user.role === 'admin')) {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getTracks()[0];
@@ -301,7 +314,7 @@ export default function LiveClassRoom({ classData, onLeave }) {
   };
 
   const handleWhiteboardChange = async () => {
-    if (user.role === 'teacher' && canvasRef.current && !isTypingMode) {
+    if ((user.role === 'teacher' || user.role === 'admin') && canvasRef.current && !isTypingMode) {
       const paths = await canvasRef.current.exportPaths();
       socketRef.current.emit('draw-stroke', { classId: classData._id, strokeData: paths });
     }
@@ -314,7 +327,7 @@ export default function LiveClassRoom({ classData, onLeave }) {
   };
 
   const handleWhiteboardClick = (e) => {
-    if (user.role !== 'teacher' || !isTypingMode) return;
+    if ((user.role !== 'teacher' && user.role !== 'admin') || !isTypingMode) return;
     if (activeInputCoords) return; // already typing
     
     const rect = whiteboardBoxRef.current.getBoundingClientRect();
@@ -337,8 +350,9 @@ export default function LiveClassRoom({ classData, onLeave }) {
   };
 
   // Determine which stream is the main Teacher Broadcast focus in the sidebar
-  const mainBroadcastStream = user.role === 'teacher' ? localStream : remoteStreams.find(s => s.role === 'teacher')?.stream;
-  const mainBroadcastLabel = user.role === 'teacher' ? 'Your Broadcast' : 'Teacher Broadcast';
+  const isTeacherUser = user.role === 'teacher' || user.role === 'admin';
+  const mainBroadcastStream = isTeacherUser ? localStream : remoteStreams.find(s => s.role === 'teacher' || s.role === 'admin')?.stream;
+  const mainBroadcastLabel = isTeacherUser ? 'Your Broadcast' : 'Teacher Broadcast';
 
   // The bottom row contains all other webcams (local students + remote students)
   const participantStreams = [];
@@ -353,9 +367,9 @@ export default function LiveClassRoom({ classData, onLeave }) {
       {/* Dynamic Header */}
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 1rem 0', borderRadius: 0, padding: '1rem 2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button className="btn-outline" onClick={onLeave}>← Leave Room {user.role === 'teacher' ? '(Keep Live)' : ''}</button>
+          <button className="btn-outline" onClick={onLeave}>← Leave Room {isTeacherUser ? '(Keep Live)' : ''}</button>
           
-          {user.role === 'teacher' && (
+          {isTeacherUser && (
             <button className="btn-primary" onClick={handleEndSessionDirectly} style={{ backgroundColor: '#e53e3e', borderColor: '#e53e3e', color: '#fff' }}>
               End Session For All
             </button>
@@ -364,7 +378,7 @@ export default function LiveClassRoom({ classData, onLeave }) {
           <h2 style={{marginLeft: '1rem'}}><span style={{ color: '#e53e3e' }}>🔴 LIVE:</span> {classData.title}</h2>
           <span className="badge badge-primary">{classData.section}</span>
         </div>
-        {user.role === 'teacher' && (
+        {isTeacherUser && (
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <span style={{fontWeight:'bold'}}>Students Connected: {remoteStreams.filter(s => s.role === 'student').length}</span>
             <button className="btn-outline" onClick={clearWhiteboard}>Clear Board</button>
@@ -386,7 +400,7 @@ export default function LiveClassRoom({ classData, onLeave }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <strong>Virtual Whiteboard</strong>
-                {user.role === 'teacher' && (
+                {isTeacherUser && (
                   <div style={{ display: 'flex', gap: '0.5rem', background: '#ececec', padding: '0.3rem', borderRadius: '8px' }}>
                     <button 
                       onClick={() => setIsTypingMode(false)} 
@@ -400,7 +414,7 @@ export default function LiveClassRoom({ classData, onLeave }) {
                 )}
               </div>
 
-              {user.role === 'teacher' ? (
+              {isTeacherUser ? (
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   {['black', '#e53e3e', '#2b6cb0', '#2f855a'].map(color => (
                     <div 
@@ -415,13 +429,13 @@ export default function LiveClassRoom({ classData, onLeave }) {
               )}
             </div>
             
-            <div ref={whiteboardBoxRef} onClick={handleWhiteboardClick} style={{ position: 'relative', flex: 1, border: '2px dashed #ccc', borderRadius: '8px', cursor: user.role === 'teacher' ? (isTypingMode ? 'text' : 'crosshair') : 'default', overflow: 'hidden' }}>
+            <div ref={whiteboardBoxRef} onClick={handleWhiteboardClick} style={{ position: 'relative', flex: 1, border: '2px dashed #ccc', borderRadius: '8px', cursor: isTeacherUser ? (isTypingMode ? 'text' : 'crosshair') : 'default', overflow: 'hidden' }}>
               <ReactSketchCanvas
                 ref={canvasRef}
-                strokeWidth={user.role === 'teacher' && !isTypingMode ? 4 : 0} 
+                strokeWidth={isTeacherUser && !isTypingMode ? 4 : 0} 
                 strokeColor={penColor}
                 onChange={handleWhiteboardChange}
-                readOnly={user.role === 'student' || isTypingMode} 
+                readOnly={!isTeacherUser || isTypingMode} 
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}
               />
               
@@ -480,10 +494,10 @@ export default function LiveClassRoom({ classData, onLeave }) {
               <VideoNode 
                 stream={mainBroadcastStream}
                 label={mainBroadcastLabel}
-                muted={user.role === 'teacher'} 
-                isVideoMuted={user.role === 'teacher' ? isVideoMuted : false}
-                onToggleAudio={user.role === 'teacher' ? toggleAudio : null}
-                onToggleVideo={user.role === 'teacher' ? toggleVideo : null}
+                muted={isTeacherUser} 
+                isVideoMuted={isTeacherUser ? isVideoMuted : false}
+                onToggleAudio={isTeacherUser ? toggleAudio : null}
+                onToggleVideo={isTeacherUser ? toggleVideo : null}
                 isAudioMutedLocal={isAudioMuted}
               />
             ) : (
