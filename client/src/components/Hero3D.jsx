@@ -1,6 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// Hero3D – 3D parallax hero section with floating cards
+// ─────────────────────────────────────────────────────────
+
 import { useMouseParallax } from '../hooks/useMouseParallax';
 
-export default function Hero3D() {
+export default function Hero3D({ onGetStarted }) {
   const { transform } = useMouseParallax();
 
   return (
@@ -13,7 +17,14 @@ export default function Hero3D() {
         </p>
 
         <div className="hero-actions">
-          <button className="btn-primary" type="button">Get Demo</button>
+          <button
+            className="btn-primary"
+            type="button"
+            onClick={onGetStarted}
+            id="hero-get-started"
+          >
+            Get Started Free
+          </button>
           <button className="btn-ghost" type="button">View Architecture</button>
         </div>
       </div>
