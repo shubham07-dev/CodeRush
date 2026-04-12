@@ -14,6 +14,7 @@ import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import CampusNavigatePage from './pages/navigate/CampusNavigatePage.jsx';
+import CopilotWidget from './components/CopilotWidget.jsx';
 
 // ── View constants ──────────────────────────────────────
 const VIEW = {
@@ -86,7 +87,15 @@ function AppContent() {
     changeView(VIEW.DASHBOARD);
   }
 
-  if (isAuthenticated && view !== VIEW.LANDING) {
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (view === VIEW.LOGIN || view === VIEW.REGISTER || view === VIEW.LANDING) {
+        changeView(VIEW.DASHBOARD);
+      }
+    }
+  }, [isAuthenticated, view]);
+
+  if (isAuthenticated && view === VIEW.DASHBOARD) {
     return (
       <>
         {toast && (
@@ -154,6 +163,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <CopilotWidget />
     </AuthProvider>
   );
 }

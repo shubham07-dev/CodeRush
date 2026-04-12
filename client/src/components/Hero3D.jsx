@@ -92,7 +92,7 @@ export default function Hero3D({ onGetStarted, onNavigate }) {
           variants={fadeUp}
         >
           Your Unified<br />
-          Intelligence Hub.<br />
+          <span className="aura-hero__highlight">AI Intelligence</span> Hub.<br />
           <span className="aura-hero__typed-wrap">
             For <span className="aura-hero__typed">{typedRole}</span>
             <span className="aura-hero__cursor">|</span>
@@ -107,7 +107,7 @@ export default function Hero3D({ onGetStarted, onNavigate }) {
           viewport={{ once: true }}
           variants={fadeUp}
         >
-          Aura Campus seamlessly integrates all aspects of your academic journey.
+          OmniCampus seamlessly integrates all aspects of your academic journey.
           Mark attendance, manage assignments, join live classes, and navigate
           with precise 3D-mapped GPS — all from one secure, role-based solution.
         </motion.p>
@@ -162,20 +162,20 @@ export default function Hero3D({ onGetStarted, onNavigate }) {
           </motion.div>
 
           <motion.div className="aura-float-card aura-float-card--tr" custom={2} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={floatCard}>
-            <div className="aura-float-card__label">Smart Attendance</div>
+            <div className="aura-float-card__label">OmniCampus Copilot</div>
             <div className="aura-float-card__attendance">
-              <div>Student ID: AC001</div>
-              <div className="aura-float-card__marked">MARKED ✓</div>
-              <div>Lecture Hall 4</div>
+              <div style={{ color: '#b49359', fontWeight: 600 }}>Ask me anything! 🤖</div>
+              <div className="aura-float-card__marked" style={{ color: '#10b981', marginTop: '4px' }}>⚡ Vector Cache Active</div>
+              <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '2px' }}>Context-aware RAG engine</div>
             </div>
           </motion.div>
 
           <motion.div className="aura-float-card aura-float-card--br" custom={3} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={floatCard}>
-            <div className="aura-float-card__label">Task Manager</div>
+            <div className="aura-float-card__label">Virtual Code Editor</div>
             <div className="aura-float-card__task">
-              <div>ASSIGNMENT:</div>
-              <div>Data Structures</div>
-              <div className="aura-float-card__pending">PENDING</div>
+              <div style={{ fontSize: '0.75rem', opacity: 0.7, textTransform: 'uppercase' }}>FILE: main.js</div>
+              <div style={{ fontFamily: 'monospace', background: '#1c1c1c', color: '#10b981', padding: '6px', borderRadius: '4px', fontSize: '0.8rem', margin: '6px 0' }}>{`console.log("Hello");`}</div>
+              <div className="aura-float-card__pending" style={{ color: '#b49359' }}>Node.js Runtime Ready</div>
             </div>
           </motion.div>
         </div>

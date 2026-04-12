@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-// Team – Interactive profile cards with flip + tilt
+// Team – Clean profile cards with photo and name only
 // ─────────────────────────────────────────────────────────
 
 import { useState, useRef } from 'react';
@@ -9,34 +9,22 @@ const teamMembers = [
   {
     name: "Shashank Rai",
     role: "Developer",
-    bio: "Full-stack architect behind the attendance engine, assignment portal, and campus navigation system.",
-    stats: { label: "Modules Built", value: "12+" },
     image: "https://res.cloudinary.com/dft7k0axp/image/upload/v1776016778/smart_campus_team/mycclpyhxehnxccup225.png",
-    category: "dev"
   },
   {
     name: "Shashwat Mishra",
     role: "Developer",
-    bio: "Backend specialist powering the real-time Socket.io event bus and REST API architecture.",
-    stats: { label: "API Endpoints", value: "40+" },
     image: "https://res.cloudinary.com/dft7k0axp/image/upload/v1776016780/smart_campus_team/dfl1bnivvknejg6amjog.png",
-    category: "dev"
   },
   {
     name: "Shubham Shukla",
     role: "Developer",
-    bio: "Frontend craftsman responsible for the responsive UI system, glassmorphism design language, and motion interactions.",
-    stats: { label: "Components", value: "35+" },
     image: "https://res.cloudinary.com/dft7k0axp/image/upload/v1776017025/smart_campus_team/ohqauafzphiaflplnnn4.png",
-    category: "dev"
   },
   {
     name: "YashDeep Gupta",
     role: "Developer",
-    bio: "Systems engineer handling Cloudinary integrations, WebRTC video streams, and campus GPS mapping.",
-    stats: { label: "Integrations", value: "8+" },
     image: "https://res.cloudinary.com/dft7k0axp/image/upload/v1776016782/smart_campus_team/ccr8chzc41azro0i3yqf.png",
-    category: "dev"
   }
 ];
 
@@ -50,17 +38,16 @@ const fadeUp = {
 };
 
 function TeamCard({ member, index }) {
-  const [flipped, setFlipped] = useState(false);
   const [tilt, setTilt] = useState({});
   const cardRef = useRef(null);
 
   const handleMouseMove = (e) => {
-    if (flipped || !cardRef.current) return;
+    if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
-    const rotateX = (0.5 - y) * 12;
-    const rotateY = (x - 0.5) * 12;
+    const rotateX = (0.5 - y) * 10;
+    const rotateY = (x - 0.5) * 10;
 
     setTilt({
       transform: `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
@@ -86,34 +73,17 @@ function TeamCard({ member, index }) {
     >
       <div
         ref={cardRef}
-        className={`team-card ${flipped ? 'team-card--flipped' : ''}`}
-        style={!flipped ? tilt : {}}
+        className="team-card"
+        style={tilt}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onClick={() => setFlipped(!flipped)}
       >
-        {/* Front */}
         <div className="team-card__front">
-          <div className={`team-card__ring team-card__ring--${member.category}`}>
+          <div className="team-card__ring">
             <img src={member.image} alt={member.name} />
           </div>
           <h3 className="team-card__name">{member.name}</h3>
           <p className="team-card__role">{member.role}</p>
-          <div className="team-card__stat">
-            <span className="team-card__stat-value">{member.stats.value}</span>
-            <span className="team-card__stat-label">{member.stats.label}</span>
-          </div>
-        </div>
-
-        {/* Back */}
-        <div className="team-card__back">
-          <h3 className="team-card__name">{member.name}</h3>
-          <p className="team-card__bio">{member.bio}</p>
-          <div className="team-card__social">
-            <span>GitHub</span>
-            <span>LinkedIn</span>
-          </div>
-          <p className="team-card__flip-hint">↩ Tap to flip back</p>
         </div>
       </div>
     </motion.div>
@@ -132,10 +102,10 @@ export default function Team() {
       >
         <span className="aura-hero__eyebrow">✦ THE TEAM</span>
         <h2 className="aura-features__title">
-          Meet the Minds Behind Aura
+          Meet the Minds Behind OmniCampus
         </h2>
         <p className="aura-features__subtitle">
-          The engineering team pushing the boundaries of campus intelligence. Click a card to learn more.
+          The engineering team pushing the boundaries of campus intelligence.
         </p>
       </motion.div>
 

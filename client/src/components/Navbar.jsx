@@ -37,7 +37,7 @@ export default function Navbar({ onLogin, onRegister, onNavigate }) {
           {/* Brand */}
           <a href="#" className="aura-nav__brand" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
             <img src="/logo.png" alt="Aura Logo" className="aura-nav__logo" />
-            <span>Aura Campus</span>
+            <span>OmniCampus</span>
           </a>
 
           {/* Desktop Links */}
@@ -62,7 +62,7 @@ export default function Navbar({ onLogin, onRegister, onNavigate }) {
               Sign In
             </button>
             <button className="aura-nav__cta" type="button" onClick={onRegister} id="nav-register-btn">
-              Join Aura
+              Join OmniCampus
             </button>
           </div>
 

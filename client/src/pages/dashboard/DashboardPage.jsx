@@ -161,9 +161,9 @@ export default function DashboardPage() {
       {/* ── Sidebar ────────────────────────────────── */}
       <aside className={`dash-sidebar${sidebarOpen ? ' open' : ''}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '1.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-          <img src="/logo.png" alt="Aura Logo" style={{ height: '36px', width: 'auto', transform: 'scale(1.2)' }} />
+          <img src="/logo.png" alt="OmniCampus Logo" style={{ height: '36px', width: 'auto', transform: 'scale(1.2)' }} />
           <span style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: "'Playfair Display', serif" }}>
-            Aura Campus
+            OmniCampus
           </span>
         </div>
 

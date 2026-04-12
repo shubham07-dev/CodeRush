@@ -38,7 +38,7 @@ export default function Footer() {
           <div className="aura-footer__col aura-footer__col--brand">
             <div className="aura-footer__brand">
               <img src="/logo.png" alt="Aura Logo" className="aura-footer__logo" />
-              <span>Aura Campus</span>
+              <span>OmniCampus</span>
             </div>
             <p className="aura-footer__desc">
               The definitive operating system unifying students, teachers, and campus operators through
@@ -70,7 +70,7 @@ export default function Footer() {
           {/* Col 4: Newsletter */}
           <div className="aura-footer__col aura-footer__col--newsletter">
             <h4>Stay Updated</h4>
-            <p>Get the latest Aura Campus updates delivered to your inbox.</p>
+            <p>Get the latest OmniCampus updates delivered to your inbox.</p>
             <form onSubmit={handleSubscribe} className="aura-footer__form">
               {!subscribed ? (
                 <>
@@ -100,7 +100,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="aura-footer__bottom">
-          <p>© {new Date().getFullYear()} Aura Campus Inc. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} OmniCampus Inc. All rights reserved.</p>
           <div className="aura-footer__socials">
             {socials.map((s, i) => (
               <motion.a

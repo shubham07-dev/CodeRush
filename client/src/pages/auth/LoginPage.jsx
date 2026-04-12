@@ -34,9 +34,9 @@ export default function LoginPage({ onSwitch, onSuccess }) {
 
       <div className="auth-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', justifyContent: 'center' }}>
-          <img src="/logo.png" alt="Aura Logo" style={{ height: '56px', width: 'auto', transform: 'scale(1.2)' }} />
+          <img src="/logo.png" alt="OmniCampus Logo" style={{ height: '56px', width: 'auto', transform: 'scale(1.2)' }} />
           <span style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: "'Playfair Display', serif" }}>
-            Aura Campus
+            OmniCampus
           </span>
         </div>
         <h2>Welcome Back</h2>

@@ -24,6 +24,7 @@ import practicalRoutes from './modules/practical/practical.routes.js';
 import notificationRoutes from './modules/notification/notification.routes.js';
 import onlineClassRoutes from './modules/onlineClass/onlineClass.routes.js';
 import userRoutes from './modules/users/user.routes.js';
+import copilotRoutes from './modules/copilot/copilot.routes.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -63,6 +64,7 @@ app.use('/api/v1/practicals', practicalRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/classes', onlineClassRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/copilot', copilotRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
