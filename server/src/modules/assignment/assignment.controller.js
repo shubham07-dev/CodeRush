@@ -14,7 +14,7 @@ export async function createAssignment(req, res, next) {
     
     let pdfAttachment = null;
     if (req.file) {
-      pdfAttachment = `/uploads/assignments/${req.file.filename}`;
+      pdfAttachment = req.file.path; // Cloudinary URL
     }
 
     const assignment = await Assignment.create({
@@ -69,7 +69,7 @@ export async function submitAssignment(req, res, next) {
     const { id } = req.params; // record ID
     let submissionPdf = null;
     if (req.file) {
-      submissionPdf = `/uploads/assignments/${req.file.filename}`;
+      submissionPdf = req.file.path; // Cloudinary URL
     } else {
       return res.status(400).json({ success: false, message: 'PDF submission is required' });
     }

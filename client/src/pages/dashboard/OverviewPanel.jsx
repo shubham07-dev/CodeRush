@@ -68,7 +68,7 @@ export default function OverviewPanel() {
           <div style={{ position: 'relative', width: '100px', height: '100px' }}>
             <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: `4px solid ${theme.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdfdfd', fontSize: '3rem', fontWeight: 'bold', color: theme.accent, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
               {user.profilePicture ? (
-                <img src={`http://localhost:5000${user.profilePicture}`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={`${user.profilePicture}`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 <span>{user.fullName.charAt(0).toUpperCase()}</span>
               )}

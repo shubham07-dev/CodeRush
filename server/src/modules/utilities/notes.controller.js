@@ -11,11 +11,11 @@ export async function createNote(req, res, next) {
 
     const file = req.file
       ? {
-          filename: req.file.filename,
+          filename: req.file.filename || req.file.originalname,
           originalName: req.file.originalname,
           mimetype: req.file.mimetype,
           size: req.file.size,
-          url: `/uploads/notes/${req.file.filename}`
+          url: req.file.path // Cloudinary URL
         }
       : undefined;
 

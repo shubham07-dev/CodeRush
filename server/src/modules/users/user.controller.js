@@ -74,7 +74,7 @@ export async function deleteUser(req, res, next) {
 export async function uploadAvatar(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No image uploaded' });
-    const profilePicture = `/uploads/avatars/${req.file.filename}`;
+    const profilePicture = req.file.path; // Cloudinary URL
     const user = await User.findByIdAndUpdate(req.user._id, { profilePicture }, { new: true });
     return res.status(200).json({ success: true, message: 'Profile picture updated', data: { user: user.toSafeObject() } });
   } catch (error) {

@@ -12,11 +12,11 @@ export async function createNotice(req, res, next) {
 
     // Build attachments array from uploaded files
     const attachments = (req.files || []).map((file) => ({
-      filename: file.filename,
+      filename: file.filename || file.originalname,
       originalName: file.originalname,
       mimetype: file.mimetype,
       size: file.size,
-      url: `/uploads/notices/${file.filename}`
+      url: file.path // Cloudinary URL
     }));
 
     // Auto-generate summary for long notices

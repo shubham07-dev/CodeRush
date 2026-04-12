@@ -151,7 +151,7 @@ export default function AssignmentsPage() {
                   </div>
                   <div className="mt-4" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     {record.assignment.pdfAttachment && (
-                      <a href={`http://localhost:5000${record.assignment.pdfAttachment}`} target="_blank" rel="noreferrer" className="text-accent hover:underline text-sm font-medium">
+                      <a href={`${record.assignment.pdfAttachment}`} target="_blank" rel="noreferrer" className="text-accent hover:underline text-sm font-medium">
                         View Assignment PDF
                       </a>
                     )}
@@ -179,7 +179,7 @@ export default function AssignmentsPage() {
                       </div>
                     )}
                     {(record.status === 'submitted' || record.status === 'completed') && record.submissionPdf && (
-                       <a href={`http://localhost:5000${record.submissionPdf}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline text-sm font-medium ml-4">
+                       <a href={`${record.submissionPdf}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline text-sm font-medium ml-4">
                          My Submission PDF
                        </a>
                     )}
@@ -298,7 +298,7 @@ function TeacherAssignmentCard({ assignment, downloadReport, deleteAssignment })
           <div className="text-sm bg-neutral-100 p-3 rounded mb-4 flex justify-between">
             <span>Target: {assignment.targetDepartment || 'All Depts'} | Year {assignment.targetYear || 'All'} | Sec {assignment.targetSection || 'All'}</span>
             {assignment.pdfAttachment && (
-              <a href={`http://localhost:5000${assignment.pdfAttachment}`} target="_blank" rel="noreferrer" className="text-accent hover:underline font-medium">Original PDF</a>
+              <a href={`${assignment.pdfAttachment}`} target="_blank" rel="noreferrer" className="text-accent hover:underline font-medium">Original PDF</a>
             )}
           </div>
           
@@ -333,7 +333,7 @@ function TeacherAssignmentCard({ assignment, downloadReport, deleteAssignment })
                       </td>
                       <td>
                         {record.submissionPdf ? (
-                          <a href={`http://localhost:5000${record.submissionPdf}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View PDF</a>
+                          <a href={`${record.submissionPdf}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View PDF</a>
                         ) : <span className="text-neutral-400">—</span>}
                       </td>
                       <td>
