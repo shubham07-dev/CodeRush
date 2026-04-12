@@ -12,7 +12,7 @@ export function handleValidationErrors(req, res, next) {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
+      message: errors.array()[0].msg,
       errors: errors.array().map((err) => ({
         field: err.path,
         message: err.msg
@@ -38,6 +38,13 @@ export const registerValidation = [
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Must be a valid email address')
+    .custom((value, { req }) => {
+      const role = req.body.role || 'student';
+      if (role === 'student' && !value.endsWith('@bbdniit.ac.in')) {
+        throw new Error('Please use college email only (@bbdniit.ac.in)');
+      }
+      return true;
+    })
     .normalizeEmail(),
 
   body('password')
