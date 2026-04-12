@@ -1,87 +1,93 @@
 # Smart Campus OS – Change Log
 
+## v1.2.0 – Feature Expansion (2026-04-12)
+
+### 📋 Smart Attendance System
+
+#### New Files
+- `server/src/modules/attendance/attendance.model.js` – AttendanceSession & AttendanceRecord schemas
+- `server/src/modules/attendance/attendance.controller.js` – Session CRUD, geolocation-locked marking, auto percentage
+- `server/src/modules/attendance/attendance.routes.js` – 6 endpoints with RBAC
+- `server/src/modules/attendance/attendance.validation.js` – express-validator chains
+- `server/src/modules/location/location.model.js` – CampusLocation schema (GPS coordinates)
+- `server/src/modules/location/location.controller.js` – CRUD + auto-seed BBD NIIT Lucknow (26.886316, 81.059048)
+- `server/src/modules/location/location.routes.js` – Admin-only location management
+- `server/src/utils/geo.js` – Haversine distance formula for geofencing
+- `client/src/pages/attendance/AttendancePage.jsx` – Teacher: create sessions, view records; Student: enter code + GPS verify
+- `client/src/pages/locations/CampusLocationsPage.jsx` – Admin manages campus GPS coordinates
+
+### 📢 Smart Notice System
+
+#### New Files
+- `server/src/modules/notice/notice.model.js` – Notice schema with file attachments, priority, target roles, read tracking
+- `server/src/modules/notice/notice.controller.js` – CRUD with AI summarization and file upload support
+- `server/src/modules/notice/notice.routes.js` – 4 endpoints with multer file upload (up to 5 files)
+- `server/src/utils/summariser.js` – Extractive text summarizer (pure JS, no external AI dependency)
+- `server/src/utils/upload.js` – Multer configuration with per-module sub-folders
+- `client/src/pages/notices/NoticePage.jsx` – Notice board with compose form, priority badges, attachment downloads
+
+### 🔧 Complaint Management
+
+#### New Files
+- `server/src/modules/complaint/complaint.model.js` – Complaint schema with categories, status tracking, response thread
+- `server/src/modules/complaint/complaint.controller.js` – Raise, list, update status, respond
+- `server/src/modules/complaint/complaint.routes.js` – 5 endpoints
+- `server/src/modules/complaint/complaint.validation.js` – Validation chains
+- `client/src/pages/complaints/ComplaintPage.jsx` – Status filter, complaint form, response thread view
+
+### 🛠️ Student Utilities
+
+#### New Files
+- `server/src/modules/utilities/notes.model.js` – Shared notes with file upload
+- `server/src/modules/utilities/notes.controller.js` – Notes CRUD
+- `server/src/modules/utilities/lostfound.model.js` – Lost & Found items
+- `server/src/modules/utilities/lostfound.controller.js` – Post, filter, claim
+- `server/src/modules/utilities/discussion.model.js` – Peer Q&A with answers, tags, solved status
+- `server/src/modules/utilities/discussion.controller.js` – Questions, answers, solved toggle
+- `server/src/modules/utilities/utilities.routes.js` – Combined router (10 endpoints)
+- `server/src/modules/utilities/utilities.validation.js` – Validation chains for all 3 sub-modules
+- `client/src/pages/utilities/UtilitiesPage.jsx` – Tabbed UI: Notes, Lost & Found, Discussion
+
+### 🏗️ Dashboard Overhaul
+
+#### Modified Files
+- `client/src/pages/dashboard/DashboardPage.jsx` – Converted to shell layout with sidebar navigation + module content switching
+- `client/src/pages/dashboard/OverviewPanel.jsx` – **[NEW]** Extracted original dashboard content into standalone panel
+
+#### Modified Files
+- `server/src/app.js` – Registered 5 new route modules, added static file serving for uploads, updated helmet CORS policy
+- `server/src/server.js` – Added auto-seeding of default campus location on startup
+- `client/src/styles.css` – Added 800+ lines: sidebar layout, module pages, tables, forms, badges, tabs, progress bars, thread views, responsive breakpoints
+
+### 📦 Dependencies
+- `server/package.json` – Added `multer` for file uploads
+
+### 📐 Architecture Summary
+- **New API endpoints**: 25+ across 5 new modules
+- **New backend files**: 20
+- **New frontend pages**: 6 (Attendance, Notices, Complaints, Utilities, Campus Locations, OverviewPanel)
+- **Design pattern**: All modules follow `model → controller → routes → validation` pattern
+- **CSS design**: All new UI uses existing cream/brown glassmorphism tokens
+
+---
+
 ## v1.1.0 – JWT Auth & RBAC System (2026-04-12)
 
 ### 🔐 Backend – Authentication & Authorization
-
-#### New Files
-- `server/src/modules/auth/auth.validation.js` – Express-validator rules for register, login, and refresh-token endpoints
-
-#### Modified Files
-- `server/src/config/env.js`
-  - Added `jwtRefreshSecret` and `jwtRefreshExpiresIn` environment variables
-  - Updated default JWT expiry from `7d` to `1d` for access tokens
-  
-- `server/src/utils/authToken.js`
-  - Added `verifyAccessToken()` function
-  - Added `signRefreshToken()` and `verifyRefreshToken()` for refresh-token rotation
-
-- `server/src/modules/auth/auth.model.js`
-  - Added `refreshToken` field (select: false) for server-side token persistence
-  - Added comprehensive comments throughout the schema
-
-- `server/src/modules/auth/auth.controller.js`
-  - Updated `register()` to return both access + refresh tokens
-  - Updated `login()` to return both access + refresh tokens with rotation
-  - Added `refreshAccessToken()` – POST /api/v1/auth/refresh
-  - Added `logout()` – POST /api/v1/auth/logout (invalidates refresh token)
-
-- `server/src/modules/auth/auth.routes.js`
-  - Added `POST /refresh` with `refreshValidation` middleware
-  - Added `POST /logout` with `protect` middleware
-  - Integrated express-validator on register and login endpoints
-
-- `server/src/middleware/auth.js`
-  - Enhanced `protect()` with specific `TokenExpiredError` and `JsonWebTokenError` handling
-  - Added comprehensive inline documentation
-  - Clearer error messages for different failure cases
+- User model with bcrypt password hashing and refresh token rotation
+- Register, login, refresh, logout controllers with express-validator
+- JWT protect middleware with specific error handling
+- Role-based authorization middleware (student, teacher, admin)
 
 ### 🎨 Frontend – Auth UI & Dashboard
-
-#### New Files
-- `client/src/api/client.js` – Axios instance with automatic JWT attachment and transparent 401 refresh
-- `client/src/context/AuthContext.jsx` – React context for auth state (register, login, logout, fetchMe)
-- `client/src/pages/auth/LoginPage.jsx` – Login form with glassmorphic cream/brown design
-- `client/src/pages/auth/RegisterPage.jsx` – Register form with role-selection cards
-- `client/src/pages/dashboard/DashboardPage.jsx` – Role-specific dashboard after login
-
-#### Modified Files
-- `client/src/App.jsx`
-  - Wrapped in `AuthProvider`
-  - Added view-state routing: landing → login → register → dashboard
-
-- `client/src/components/Navbar.jsx`
-  - Added "Sign In" (ghost) and "Get Started" (primary) buttons
-  - Wired to auth page navigation callbacks
-
-- `client/src/components/Hero3D.jsx`
-  - Changed CTA to "Get Started Free" wired to registration flow
-
-- `client/src/components/FooterCTA.jsx`
-  - Wired CTA button to registration flow
-
-- `client/src/styles.css`
-  - Added CSS custom properties (`--accent`, `--accent-dark`, `--accent-glow`, etc.)
-  - Added complete auth page styles (glass card, floating orbs, input fields, role grid)
-  - Added dashboard styles (header, hero greeting, stat cards, focus cards, account grid)
-  - Added animations: `authSlideIn`, `shake`, `spin`
-  - Added hover micro-animations with subtle transforms
-  - Added responsive breakpoints for auth and dashboard layouts
+- AuthContext provider with Axios interceptors for auto token refresh
+- LoginPage and RegisterPage with glassmorphic design
+- Role-aware DashboardPage
+- Navbar with Sign In / Get Started buttons
 
 ### 📦 Dependencies
-
-- `client/package.json` – Added `axios` for API communication
-- `server/package.json` – Added `express-validator` for input validation
+- Backend: `express-validator`
+- Frontend: `axios`
 
 ### ⚙️ Configuration
-
-- `.env.example` – Added `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_SECRET`, `JWT_REFRESH_EXPIRES_IN`
-- `.env` – Created with development defaults
-
-### 📐 Architecture Decisions
-
-1. **Refresh Token Rotation**: Each refresh issues a new token pair, preventing replay attacks
-2. **Token Storage**: Access + refresh tokens stored in `localStorage` (suitable for SPA; consider httpOnly cookies for production)
-3. **Auto-Refresh**: Axios interceptor transparently refreshes expired access tokens
-4. **Role-Based Dashboard**: Dashboard content is fetched from the server based on user role
-5. **Input Validation**: Server-side validation using express-validator chains with structured error responses
+- `.env` – JWT_SECRET, JWT_EXPIRES_IN, JWT_REFRESH_SECRET, JWT_REFRESH_EXPIRES_IN

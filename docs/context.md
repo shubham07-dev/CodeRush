@@ -1,7 +1,6 @@
 # Smart Campus OS – Agent Context
 
-> This file preserves the context and design decisions made by the AI coding agent
-> during the JWT Auth & RBAC implementation session (2026-04-12).
+> This file preserves the context and design decisions made by the AI coding agent.
 
 ---
 
@@ -15,133 +14,121 @@ interactions, and floating orb animations.
 
 ```
 Smart Campus/
-├── .env                        # Environment variables (JWT secrets, MongoDB URI)
-├── .env.example                # Template for .env
-├── package.json                # Root monorepo (npm workspaces)
+├── .env / .env.example
+├── package.json                    # Root monorepo (npm workspaces)
 ├── docs/
-│   ├── architecture.md         # System architecture notes
-│   ├── changelog.md            # Detailed change log
-│   └── context.md              # This file – AI agent context
+│   ├── architecture.md
+│   ├── changelog.md
+│   └── context.md                  # This file
 │
-├── server/                     # Express.js backend
+├── server/
+│   ├── uploads/                    # Static file storage
+│   │   ├── notices/
+│   │   └── notes/
 │   └── src/
-│       ├── server.js           # Entry – connects MongoDB, starts Express
-│       ├── app.js              # Express app setup (middleware, routes)
-│       ├── config/
-│       │   └── env.js          # Centralised environment config
-│       ├── db/
-│       │   └── mongo.js        # Mongoose connection helper
+│       ├── server.js               # Entry – connect DB, seed, start Express
+│       ├── app.js                  # Express setup (middleware, 9 route modules)
+│       ├── config/env.js
+│       ├── db/mongo.js
 │       ├── utils/
-│       │   └── authToken.js    # JWT sign/verify for access + refresh tokens
+│       │   ├── authToken.js        # JWT sign/verify
+│       │   ├── geo.js              # Haversine distance
+│       │   ├── summariser.js       # Extractive text summarizer
+│       │   └── upload.js           # Multer config
 │       ├── middleware/
-│       │   ├── auth.js         # protect (JWT verify), authorize (RBAC), dashboard guard
-│       │   ├── errorHandler.js # Global error handler
-│       │   └── notFound.js     # 404 catch-all
+│       │   ├── auth.js             # protect, authorize, dashboardRoleGuard
+│       │   ├── errorHandler.js
+│       │   └── notFound.js
 │       └── modules/
-│           ├── auth/
-│           │   ├── auth.constants.js   # USER_ROLES enum
-│           │   ├── auth.model.js       # Mongoose User schema
-│           │   ├── auth.controller.js  # register, login, me, refresh, logout
-│           │   ├── auth.routes.js      # Route definitions with validation
-│           │   └── auth.validation.js  # express-validator chains
-│           ├── campus/
-│           │   ├── campus.model.js
-│           │   ├── campus.controller.js
-│           │   └── campus.routes.js
-│           ├── dashboard/
-│           │   ├── dashboard.controller.js  # Role-specific mock data generators
-│           │   └── dashboard.routes.js
-│           └── health/
-│               ├── health.controller.js
-│               └── health.routes.js
+│           ├── auth/               # User model, register/login/refresh/logout
+│           ├── campus/             # Campus overview
+│           ├── dashboard/          # Role-specific dashboard data
+│           ├── health/             # Health check
+│           ├── location/           # CampusLocation CRUD (admin GPS mgmt)
+│           ├── attendance/         # Sessions + Records (QR + geolocation)
+│           ├── notice/             # Notices with file attachments + AI summary
+│           ├── complaint/          # Student complaints + status + responses
+│           └── utilities/          # Notes, Lost & Found, Discussion
 │
-└── client/                     # React + Vite frontend
-    ├── index.html              # HTML shell (fonts: Manrope, Fraunces)
-    ├── vite.config.js          # Vite config (port 5173)
+└── client/
     └── src/
-        ├── main.jsx            # React root mount
-        ├── App.jsx             # View-state routing (landing/login/register/dashboard)
-        ├── styles.css          # Global styles (cream/brown theme, auth, dashboard)
-        ├── api/
-        │   └── client.js       # Axios instance with JWT interceptors
-        ├── context/
-        │   └── AuthContext.jsx # Auth state provider
-        ├── components/
-        │   ├── Navbar.jsx      # Top navigation with Sign In / Get Started buttons
-        │   ├── Hero3D.jsx      # 3D parallax hero with floating cards
-        │   ├── Modules.jsx     # Feature module cards
-        │   ├── ImpactStats.jsx # Campus KPI stat cards
-        │   └── FooterCTA.jsx   # Bottom call-to-action
+        ├── App.jsx                 # View-state routing
+        ├── styles.css              # Global styles (1800+ lines)
+        ├── api/client.js           # Axios with JWT interceptors
+        ├── context/AuthContext.jsx
+        ├── components/             # Navbar, Hero3D, Modules, etc.
         ├── hooks/
-        │   └── useMouseParallax.js  # Mouse-tracking parallax effect
         └── pages/
-            ├── auth/
-            │   ├── LoginPage.jsx    # Login form (glass card, SVG icons)
-            │   └── RegisterPage.jsx # Register form (role selector grid)
-            └── dashboard/
-                └── DashboardPage.jsx # Post-login role-specific dashboard
+            ├── auth/               # LoginPage, RegisterPage
+            ├── dashboard/          # DashboardPage (sidebar shell), OverviewPanel
+            ├── attendance/         # AttendancePage
+            ├── notices/            # NoticePage
+            ├── complaints/         # ComplaintPage
+            ├── utilities/          # UtilitiesPage (tabbed)
+            └── locations/          # CampusLocationsPage (admin)
 ```
-
-## Authentication Flow
-
-```
-Client                              Server
-  │                                   │
-  ├── POST /auth/register ──────────► │ validate → create user → hash password
-  │◄──────────── { user, token, refreshToken } ── │
-  │                                   │
-  ├── POST /auth/login ─────────────► │ validate → verify password
-  │◄──────────── { user, token, refreshToken } ── │
-  │                                   │
-  ├── GET /auth/me ─────────────────► │ protect middleware → return user
-  │  (Authorization: Bearer <token>)  │
-  │                                   │
-  ├── POST /auth/refresh ───────────► │ verify refresh token → rotate tokens
-  │◄──────────── { token, refreshToken } ─────── │
-  │                                   │
-  ├── POST /auth/logout ────────────► │ protect → nullify refresh token
-  │                                   │
-```
-
-## Role-Based Access Control
-
-| Role      | Dashboard Access | Admin Routes | Teacher Routes | Student Routes |
-|-----------|:----------------:|:------------:|:--------------:|:--------------:|
-| `student` | Student          | ✗            | ✗              | ✓              |
-| `teacher` | Teacher          | ✗            | ✓              | ✗              |
-| `admin`   | Admin            | ✓            | ✓              | ✓              |
-
-### Middleware Stack
-
-1. `protect` – Verifies JWT, attaches `req.user`
-2. `authorize('role1', 'role2')` – Checks `req.user.role` against allowed roles (403 if denied)
-3. `authorizeDashboardRoleParam` – Ensures `:role` URL param matches authenticated user's role
 
 ## API Endpoints
 
-| Method | Endpoint               | Auth Required | Description                     |
-|--------|------------------------|:-------------:|---------------------------------|
-| POST   | /api/v1/auth/register  | No            | Create new user account         |
-| POST   | /api/v1/auth/login     | No            | Authenticate and get tokens     |
-| GET    | /api/v1/auth/me        | Yes           | Get current user profile        |
-| POST   | /api/v1/auth/refresh   | No            | Refresh access token            |
-| POST   | /api/v1/auth/logout    | Yes           | Invalidate refresh token        |
-| GET    | /api/v1/dashboard/:role| Yes           | Get role-specific dashboard data|
-| GET    | /api/v1/health         | No            | API health check                |
-| GET    | /api/v1/campus/overview | No           | Campus overview stats           |
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| **Auth** ||||
+| POST | /api/v1/auth/register | No | Create account |
+| POST | /api/v1/auth/login | No | Login + tokens |
+| GET | /api/v1/auth/me | Yes | Current profile |
+| POST | /api/v1/auth/refresh | No | Refresh tokens |
+| POST | /api/v1/auth/logout | Yes | Invalidate session |
+| **Locations** ||||
+| GET | /api/v1/locations | Yes | List campuses |
+| POST | /api/v1/locations | Admin | Add campus |
+| PUT | /api/v1/locations/:id | Admin | Update campus |
+| DELETE | /api/v1/locations/:id | Admin | Remove campus |
+| **Attendance** ||||
+| POST | /api/v1/attendance/sessions | Teacher/Admin | Create session |
+| GET | /api/v1/attendance/sessions | Teacher/Admin | List sessions |
+| GET | /api/v1/attendance/sessions/:id/records | Teacher/Admin | Session records |
+| PUT | /api/v1/attendance/manual | Teacher/Admin | Manual mark |
+| POST | /api/v1/attendance/mark | Student | GPS-verified mark |
+| GET | /api/v1/attendance/my | Student | My attendance + % |
+| **Notices** ||||
+| POST | /api/v1/notices | Teacher/Admin | Create (+ files) |
+| GET | /api/v1/notices | Yes | Role-filtered list |
+| GET | /api/v1/notices/:id | Yes | Detail + mark read |
+| DELETE | /api/v1/notices/:id | Author/Admin | Delete |
+| **Complaints** ||||
+| POST | /api/v1/complaints | Student | Raise complaint |
+| GET | /api/v1/complaints | Yes | Filtered list |
+| GET | /api/v1/complaints/:id | Yes | Detail + thread |
+| PUT | /api/v1/complaints/:id/status | Teacher/Admin | Update status |
+| POST | /api/v1/complaints/:id/responses | Teacher/Admin | Add response |
+| **Utilities** ||||
+| POST | /api/v1/utilities/notes | Yes | Share note (+ file) |
+| GET | /api/v1/utilities/notes | Yes | Browse notes |
+| DELETE | /api/v1/utilities/notes/:id | Owner/Admin | Delete note |
+| POST | /api/v1/utilities/lostfound | Yes | Post lost/found |
+| GET | /api/v1/utilities/lostfound | Yes | Browse items |
+| PUT | /api/v1/utilities/lostfound/:id | Yes | Claim item |
+| POST | /api/v1/utilities/discussions | Yes | Ask question |
+| GET | /api/v1/utilities/discussions | Yes | Browse Q&A |
+| POST | /api/v1/utilities/discussions/:id/answers | Yes | Answer |
+| PUT | /api/v1/utilities/discussions/:id/solved | Author/Admin | Toggle solved |
+| **Other** ||||
+| GET | /api/v1/health | No | Health check |
+| GET | /api/v1/campus/overview | No | Campus stats |
+| GET | /api/v1/dashboard/:role | Yes | Dashboard data |
+
+## Key Design Decisions
+
+- **Geolocation Attendance**: Student browser sends GPS → server checks Haversine distance to ALL active campus locations → must be within configured radius (default 100m)
+- **Default Campus**: BBD NIIT Lucknow (26.886316, 81.059048) auto-seeded on first startup
+- **AI Summarization**: Pure JS extractive summarizer (no external API) – scores sentences by keyword frequency
+- **File Uploads**: Multer with local disk storage in `server/uploads/`, served statically at `/uploads`
+- **Dashboard Layout**: Sidebar shell with module switching via React state (no react-router)
+- **Refresh Token Rotation**: Each refresh issues new token pair, preventing replay attacks
 
 ## Design System
 
 - **Colors**: Cream (#fffdf8), Sand (#b99f6b / #8d774f), Ink (#2a241a)
 - **Fonts**: Manrope (sans-serif body), Fraunces (serif headings)
 - **Effects**: Glassmorphism, 3D perspective transforms, floating orbs, parallax
-- **Animations**: float (orbs), authSlideIn (cards), shake (errors), spin (loaders)
-
-## Security Notes
-
-- Passwords hashed with bcrypt (12 salt rounds)
-- Password never returned in API responses (`select: false`)
-- Refresh token rotation on each use (prevents replay attacks)
-- Access token expiry: 1 day, Refresh token expiry: 7 days
-- JWT secrets sourced from environment variables
-- Express-validator sanitizes and validates all input
+- **Module Styles**: `mod-*` prefix for all module page classes (mod-hero, mod-section, mod-stat-card, mod-table, mod-badge, mod-tabs, etc.)
