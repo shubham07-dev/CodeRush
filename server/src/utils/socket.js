@@ -15,6 +15,11 @@ export function initSocket(httpServer, corsOptions) {
       socket.join(room);
     });
 
+    // 0. Classes Lobby — for real-time listing page updates
+    socket.on('join-classes-lobby', () => {
+      socket.join('classes-lobby');
+    });
+
     // 1. Join Class Room
     socket.on('join-class', (classId, userRole, userId) => {
       socket.join(classId);

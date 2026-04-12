@@ -40,8 +40,8 @@ app.use(
 );
 app.use(express.json());
 
-// ── Serve uploaded files statically ─────────────────────
-// Uploads now handled globally via Cloudinary, static file sharing removed.
+// ── Serve uploaded files statically (local fallback when Cloudinary is not configured)
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'Smart Campus OS API is running' });

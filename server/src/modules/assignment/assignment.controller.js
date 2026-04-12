@@ -14,7 +14,10 @@ export async function createAssignment(req, res, next) {
     
     let pdfAttachment = null;
     if (req.file) {
-      pdfAttachment = req.file.path; // Cloudinary URL
+      // Cloudinary gives a URL in .path, local multer gives a system path
+      pdfAttachment = req.file.path.startsWith('http') 
+        ? req.file.path 
+        : `/uploads/${req.file.path.split('uploads')[1]?.replace(/\\/g, '/')}`;
     }
 
     const assignment = await Assignment.create({
@@ -26,10 +29,12 @@ export async function createAssignment(req, res, next) {
     // Spawn records for all matching students
     const studentQuery = { role: 'student' };
     if (targetDepartment) studentQuery.department = targetDepartment;
-    if (targetYear) studentQuery.enrollmentYear = targetYear;
+    if (targetYear) studentQuery.enrollmentYear = Number(targetYear);
     if (targetSection) studentQuery.section = targetSection;
 
+    console.log('[Assignment] Student query filter:', JSON.stringify(studentQuery));
     const students = await User.find(studentQuery);
+    console.log(`[Assignment] Found ${students.length} matching students for distribution.`);
     
     const recordsToInsert = students.map(s => ({
       assignment: assignment._id,
@@ -69,7 +74,9 @@ export async function submitAssignment(req, res, next) {
     const { id } = req.params; // record ID
     let submissionPdf = null;
     if (req.file) {
-      submissionPdf = req.file.path; // Cloudinary URL
+      submissionPdf = req.file.path.startsWith('http') 
+        ? req.file.path 
+        : `/uploads/${req.file.path.split('uploads')[1]?.replace(/\\/g, '/')}`;
     } else {
       return res.status(400).json({ success: false, message: 'PDF submission is required' });
     }

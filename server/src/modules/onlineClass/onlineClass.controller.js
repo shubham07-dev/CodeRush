@@ -1,5 +1,5 @@
 import { OnlineClass } from './onlineClass.model.js';
-import { ioInstance } from '../../socket.js';
+import { getIO } from '../../utils/socket.js';
 
 // GET: /api/v1/classes (Teachers get theirs, Students get active ones in their section)
 export async function getLiveClasses(req, res, next) {
@@ -56,6 +56,13 @@ export async function createLiveClass(req, res, next) {
       status: 'live'
     });
 
+    // Notify everyone on the listing page that a new class is live
+    try {
+      getIO().to('classes-lobby').emit('classes-updated');
+    } catch (err) {
+      console.error('Lobby broadcast failed:', err);
+    }
+
     return res.status(201).json({ success: true, data: newClass });
   } catch (error) {
     return next(error);
@@ -80,11 +87,44 @@ export async function endClass(req, res, next) {
     await classSession.save();
 
     // Globally emit to all connected students to boot them out
-    if (ioInstance) {
-      ioInstance.to(classSession._id.toString()).emit('class-ended');
+    // AND notify the classes listing lobby to refresh
+    try {
+      const io = getIO();
+      io.to(classSession._id.toString()).emit('class-ended');
+      io.to('classes-lobby').emit('classes-updated');
+    } catch (err) {
+      console.error('Socket emission failed:', err);
     }
 
     return res.status(200).json({ success: true, data: classSession });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+// DELETE: /api/v1/classes/:id
+export async function deleteLiveClass(req, res, next) {
+  try {
+    const classSession = await OnlineClass.findById(req.params.id);
+    
+    if (!classSession) {
+      return res.status(404).json({ success: false, message: 'Class not found' });
+    }
+
+    if (classSession.teacherId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this class' });
+    }
+
+    await classSession.deleteOne();
+
+    // Notify the listing lobby so other teachers/admins see the deletion
+    try {
+      getIO().to('classes-lobby').emit('classes-updated');
+    } catch (err) {
+      console.error('Lobby broadcast failed:', err);
+    }
+
+    return res.status(200).json({ success: true, message: 'Class session successfully deleted' });
   } catch (error) {
     return next(error);
   }

@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 
-export let ioInstance;
+let ioInstance;
 
 export function initializeSocket(httpServer) {
   const io = new Server(httpServer, {
@@ -14,6 +14,11 @@ export function initializeSocket(httpServer) {
 
   io.on('connection', (socket) => {
     // console.log('A user connected:', socket.id);
+
+    // 0. Classes Lobby — for real-time listing updates
+    socket.on('join-classes-lobby', () => {
+      socket.join('classes-lobby');
+    });
 
     // 1. Join Class Room
     socket.on('join-class', (classId, userRole, userId) => {
@@ -70,4 +75,13 @@ export function initializeSocket(httpServer) {
       // console.log('User disconnected:', socket.id);
     });
   });
+
+  return io;
+}
+
+export function getIo() {
+  if (!ioInstance) {
+    throw new Error("Socket.io not initialized!");
+  }
+  return ioInstance;
 }
