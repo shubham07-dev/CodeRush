@@ -9,6 +9,7 @@ export default function PracticalPage() {
   const [practicals, setPracticals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePractical, setActivePractical] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   // Form states for Teacher
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -19,6 +20,10 @@ export default function PracticalPage() {
 
   useEffect(() => {
     fetchPracticals();
+
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const fetchPracticals = async () => {
@@ -55,6 +60,22 @@ export default function PracticalPage() {
 
   if (loading) {
     return <div className="card text-center">Loading practicals...</div>;
+  }
+
+  if (isMobile) {
+    return (
+      <div className="page-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="card text-center" style={{ padding: '3rem 2rem', borderTop: '4px solid #e53e3e' }}>
+          <h2 style={{ margin: '0 0 1rem', color: '#111827' }}>Desktop Required</h2>
+          <p style={{ color: '#4b5563', fontSize: '1.05rem' }}>
+            Please open the Practical Editor on a laptop or desktop.
+          </p>
+          <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '1rem' }}>
+            Coding environments require wider screens to function properly.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Student view active practical
