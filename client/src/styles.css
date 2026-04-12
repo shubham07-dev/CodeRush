@@ -1928,7 +1928,7 @@ button {
     transform: translateX(-120%);
     transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease;
     box-shadow: none;
-    z-index: 51;
+    z-index: 9999;
   }
 
   .dash-sidebar.open {
@@ -1946,7 +1946,7 @@ button {
     inset: 0;
     background: rgba(42, 36, 26, 0.4);
     backdrop-filter: blur(3px);
-    z-index: 50;
+    z-index: 9998;
     animation: overlayFadeIn 0.4s ease forwards;
   }
 
