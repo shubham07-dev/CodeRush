@@ -3,7 +3,7 @@
 //        auth pages, and the role-based dashboard
 // ─────────────────────────────────────────────────────────
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Navbar from './components/Navbar';
 import Hero3D from './components/Hero3D';
@@ -22,9 +22,32 @@ const VIEW = {
   DASHBOARD: 'dashboard'
 };
 
+import { io } from 'socket.io-client';
+
+const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api/v1', '') : 'http://localhost:5000';
+
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [view, setView] = useState(isAuthenticated ? VIEW.DASHBOARD : VIEW.LANDING);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'student') {
+      const socket = io(socketUrl);
+      
+      socket.on('new_assignment', (data) => {
+        // Simple check if it targets this student
+        if ((!data.targetDepartment || data.targetDepartment === user.department) &&
+            (!data.targetYear || Number(data.targetYear) === Number(user.enrollmentYear)) &&
+            (!data.targetSection || data.targetSection === user.section)) {
+          setToast(`New Assignment Posted: ${data.title}`);
+          setTimeout(() => setToast(null), 8000);
+        }
+      });
+
+      return () => socket.disconnect();
+    }
+  }, [isAuthenticated, user]);
 
   // When auth succeeds, go to dashboard
   function handleAuthSuccess() {
@@ -33,7 +56,17 @@ function AppContent() {
 
   // If user is authenticated, show dashboard
   if (isAuthenticated && view !== VIEW.LANDING) {
-    return <DashboardPage />;
+    return (
+      <>
+        {toast && (
+          <div className="animate-fade-in" style={{ position: 'fixed', top: 30, right: 30, background: '#2a241a', color: '#fff', padding: '1rem 1.5rem', borderRadius: '12px', zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', fontWeight: 600, display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+            <span>🔔</span>
+            <span>{toast}</span>
+          </div>
+        )}
+        <DashboardPage />
+      </>
+    );
   }
 
   // Auth pages

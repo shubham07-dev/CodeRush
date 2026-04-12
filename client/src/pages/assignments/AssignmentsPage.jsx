@@ -126,7 +126,11 @@ export default function AssignmentsPage() {
                       <p className="text-sm mt-1">{record.assignment.description}</p>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm ${record.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                        record.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        record.status === 'submitted' ? 'bg-blue-100 text-blue-800' : 
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
                         {record.status.toUpperCase()}
                       </span>
                       {record.status === 'completed' && (
@@ -134,11 +138,37 @@ export default function AssignmentsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="mt-4 flex gap-4">
+                  <div className="mt-4 flex gap-4 items-center">
                     {record.assignment.pdfAttachment && (
                       <a href={`http://localhost:5000${record.assignment.pdfAttachment}`} target="_blank" rel="noreferrer" className="text-accent hover:underline text-sm font-medium">
                         View Assignment PDF
                       </a>
+                    )}
+                    {record.status === 'pending' && (
+                      <div>
+                        <input type="file" accept=".pdf" id={`upload-${record._id}`} className="hidden" 
+                          onChange={async (e) => {
+                            if (!e.target.files[0]) return;
+                            try {
+                              const fd = new FormData();
+                              fd.append('file', e.target.files[0]);
+                              await api.post(`/assignments/records/${record._id}/submit`, fd);
+                              alert('Submitted!');
+                              fetchAssignments();
+                            } catch (err) {
+                              alert('Submission failed');
+                            }
+                          }}
+                        />
+                        <label htmlFor={`upload-${record._id}`} className="btn-outline cursor-pointer px-4 py-2 text-sm mt-0 inline-block">
+                          Upload Submission
+                        </label>
+                      </div>
+                    )}
+                    {(record.status === 'submitted' || record.status === 'completed') && record.submissionPdf && (
+                       <a href={`http://localhost:5000${record.submissionPdf}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline text-sm font-medium ml-4">
+                         My Submission PDF
+                       </a>
                     )}
                   </div>
                 </div>
@@ -150,23 +180,7 @@ export default function AssignmentsPage() {
               <div className="mod-card text-center p-md text-ink-500">No assignments created yet.</div>
             ) : (
               assignments.map((assignment) => (
-                <div key={assignment._id} className="mod-card">
-                  <div className="flex justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium">{assignment.title}</h3>
-                      <p className="text-sm text-ink-500">{assignment.subject?.name} • Due: {new Date(assignment.dueDate).toLocaleDateString()}</p>
-                    </div>
-                    <button className="btn-outline text-sm" onClick={() => downloadReport(assignment._id)}>
-                      Download PDF Report
-                    </button>
-                  </div>
-                  <div className="mt-4 text-sm bg-neutral-100 p-3 rounded">
-                    Target: {assignment.targetDepartment || 'All Depts'} | Year {assignment.targetYear || 'All'} | Sec {assignment.targetSection || 'All'}
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-neutral-200">
-                    <p className="text-sm text-ink-500">To grade submissions, go to assignment details (API supports /records grading).</p>
-                  </div>
-                </div>
+                <TeacherAssignmentCard key={assignment._id} assignment={assignment} downloadReport={downloadReport} />
               ))
             )
           )}
@@ -206,6 +220,129 @@ export default function AssignmentsPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeacherAssignmentCard({ assignment, downloadReport }) {
+  const [expanded, setExpanded] = useState(false);
+  const [records, setRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+
+  async function fetchRecords() {
+    setLoadingRecords(true);
+    try {
+      const { data } = await api.get(`/assignments/${assignment._id}/records`);
+      setRecords(data.data.records);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRecords(false);
+    }
+  }
+
+  function toggleExpand() {
+    if (!expanded) fetchRecords();
+    setExpanded(!expanded);
+  }
+
+  async function handleGradeSubmit(recordId, marks) {
+    if (marks === null || marks === '') return;
+    try {
+      await api.put(`/assignments/records/${recordId}`, { marks: Number(marks) });
+      fetchRecords(); // refresh records to show completed status
+    } catch (err) {
+      console.error(err);
+      alert('Failed to grade');
+    }
+  }
+
+  return (
+    <div className="mod-card">
+      <div className="flex justify-between items-center cursor-pointer" onClick={toggleExpand}>
+        <div>
+          <h3 className="text-lg font-medium">{assignment.title}</h3>
+          <p className="text-sm text-ink-500">{assignment.subject?.name} • Due: {new Date(assignment.dueDate).toLocaleDateString()}</p>
+        </div>
+        <div className="flex gap-4">
+          <button className="btn-outline text-sm" onClick={(e) => { e.stopPropagation(); downloadReport(assignment._id); }}>
+            PDF Report
+          </button>
+          <span className="text-ink-500">{expanded ? '▲' : '▼'}</span>
+        </div>
+      </div>
+      
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-neutral-200">
+          <div className="text-sm bg-neutral-100 p-3 rounded mb-4 flex justify-between">
+            <span>Target: {assignment.targetDepartment || 'All Depts'} | Year {assignment.targetYear || 'All'} | Sec {assignment.targetSection || 'All'}</span>
+            {assignment.pdfAttachment && (
+              <a href={`http://localhost:5000${assignment.pdfAttachment}`} target="_blank" rel="noreferrer" className="text-accent hover:underline font-medium">Original PDF</a>
+            )}
+          </div>
+          
+          {loadingRecords ? (
+            <div className="text-center text-sm text-ink-500 py-4">Loading submissions...</div>
+          ) : records.length === 0 ? (
+            <div className="text-center text-sm text-ink-500 py-4">No records spawned for this assignment.</div>
+          ) : (
+            <div className="mod-table-wrap">
+              <table className="mod-table" style={{ width: '100%', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr>
+                    <th className="text-left">Student</th>
+                    <th className="text-left">Status</th>
+                    <th className="text-left">Submission</th>
+                    <th className="text-left">Marks</th>
+                    <th className="text-left">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map(record => (
+                    <tr key={record._id} className="border-b">
+                      <td className="py-2">{record.student.fullName} ({record.student.section || 'N/A'})</td>
+                      <td>
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                          record.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          record.status === 'submitted' ? 'bg-blue-100 text-blue-800' : 
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {record.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        {record.submissionPdf ? (
+                          <a href={`http://localhost:5000${record.submissionPdf}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View PDF</a>
+                        ) : <span className="text-neutral-400">—</span>}
+                      </td>
+                      <td>
+                        {record.status === 'completed' ? (
+                           <span className="font-bold">{record.marks}</span>
+                        ) : (
+                          <input type="number" id={`grade-${record._id}`} defaultValue={record.marks} className="mod-input py-1 px-2 w-20 text-sm" />
+                        )}
+                      </td>
+                      <td>
+                        {record.status !== 'completed' && (
+                          <button 
+                            className="btn-primary py-1 px-3 text-xs"
+                            onClick={() => {
+                              const inputEle = document.getElementById(`grade-${record._id}`);
+                              handleGradeSubmit(record._id, inputEle.value);
+                            }}
+                          >
+                            Grade & Complete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

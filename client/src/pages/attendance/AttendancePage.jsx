@@ -69,6 +69,46 @@ function TeacherAttendance() {
         <p>Create sessions and track student attendance in real time.</p>
       </section>
 
+      {/* Create Subject Form */}
+      <section className="mod-section" style={{ background: 'rgba(230, 240, 255, 0.3)', border: '1px solid var(--line)' }}>
+        <h3 className="mod-section-title pr-4 flex justify-between">
+          <span>Manage Academics</span>
+          <span className="text-sm font-normal text-ink-500">Teachers & Admins</span>
+        </h3>
+        <form className="mod-form" onSubmit={async (e) => {
+          e.preventDefault();
+          setLoading(true);
+          const formEl = e.target;
+          const name = formEl.elements.name.value;
+          const code = formEl.elements.code.value;
+          try {
+            await api.post('/subjects', { name, code });
+            formEl.reset();
+            loadSubjects();
+            alert('Subject added successfully!');
+          } catch (err) {
+            alert(err.response?.data?.message || 'Failed to create subject');
+          }
+          setLoading(false);
+        }}>
+          <div className="mod-form-row">
+            <div className="mod-field">
+              <label>New Subject Name</label>
+              <input type="text" name="name" placeholder="e.g. Operating Systems" required />
+            </div>
+            <div className="mod-field">
+              <label>Subject Code</label>
+              <input type="text" name="code" placeholder="e.g. CS202" required />
+            </div>
+            <div className="mod-field flex items-end">
+              <button type="submit" className="btn-outline" disabled={loading} style={{ height: '3.1rem', marginTop: 'auto' }}>
+                + Add Subject
+              </button>
+            </div>
+          </div>
+        </form>
+      </section>
+
       {/* Create Session Form */}
       <section className="mod-section">
         <h3 className="mod-section-title">Create New Session</h3>

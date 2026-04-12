@@ -6,7 +6,14 @@ import { Subject } from './subject.model.js';
 
 export async function createSubject(req, res, next) {
   try {
-    const { name, code, department, campus } = req.body;
+    const name = req.body.name;
+    const code = req.body.code;
+    const department = req.body.department || req.user.department;
+    const campus = req.body.campus || req.user.campus;
+
+    if (!campus) {
+      return res.status(400).json({ success: false, message: 'Campus is required to create a subject' });
+    }
 
     const existing = await Subject.findOne({ code: code.toUpperCase(), campus });
     if (existing) {

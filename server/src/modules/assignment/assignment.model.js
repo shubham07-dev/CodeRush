@@ -56,8 +56,11 @@ const assignmentRecordSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'completed'],
+      enum: ['pending', 'submitted', 'completed'],
       default: 'pending'
+    },
+    submissionPdf: {
+      type: String // URL to uploaded submission PDF
     },
     marks: {
       type: Number,
