@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../api/client.js';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
 // ═══════════════════════════════════════════════════════════
 // Tab: Notes Sharing

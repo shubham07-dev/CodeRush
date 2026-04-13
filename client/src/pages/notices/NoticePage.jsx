@@ -12,7 +12,7 @@ const PRIORITY_STYLES = {
   urgent: { label: '🔴 Urgent', cls: 'mod-badge-urgent' }
 };
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
 export default function NoticePage() {
   const { user } = useAuth();
