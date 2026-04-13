@@ -30,19 +30,19 @@ function VideoNode({ stream, label, muted = false, isVideoMuted = false, onToggl
         style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain', display: isVideoMuted ? 'none' : 'block' }}
       />
       {isVideoMuted && (
-        <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', position: 'absolute', top: 0, left: 0 }}>
+        <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', position: 'absolute', top: 0, left: 0, fontSize: '0.85rem' }}>
           Camera Disabled
         </div>
       )}
-      <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', zIndex: 10 }}>
+      <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', zIndex: 10 }}>
         {label}
       </div>
       {(onToggleAudio || onToggleVideo) && (
-        <div style={{ position: 'absolute', bottom: '10px', right: '10px', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
-          <button onClick={onToggleAudio} style={{ padding: '0.3rem 0.6rem', borderRadius: '4px', border: 'none', background: isAudioMutedLocal ? '#e53e3e' : '#fff', color: isAudioMutedLocal ? '#fff' : '#000', cursor: 'pointer', fontSize: '0.8rem' }}>
+        <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', gap: '0.4rem', zIndex: 10 }}>
+          <button onClick={onToggleAudio} style={{ padding: '0.3rem 0.5rem', borderRadius: '6px', border: 'none', background: isAudioMutedLocal ? '#e53e3e' : '#fff', color: isAudioMutedLocal ? '#fff' : '#000', cursor: 'pointer', fontSize: '0.8rem', minWidth: '32px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isAudioMutedLocal ? '🔇' : '🎤'}
           </button>
-          <button onClick={onToggleVideo} style={{ padding: '0.3rem 0.6rem', borderRadius: '4px', border: 'none', background: isVideoMuted ? '#e53e3e' : '#fff', color: isVideoMuted ? '#fff' : '#000', cursor: 'pointer', fontSize: '0.8rem' }}>
+          <button onClick={onToggleVideo} style={{ padding: '0.3rem 0.5rem', borderRadius: '6px', border: 'none', background: isVideoMuted ? '#e53e3e' : '#fff', color: isVideoMuted ? '#fff' : '#000', cursor: 'pointer', fontSize: '0.8rem', minWidth: '32px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isVideoMuted ? '🚫' : '📷'}
           </button>
         </div>
@@ -60,6 +60,7 @@ export default function LiveClassRoom({ classData, onLeave }) {
   const localStreamRef = useRef(null);
   const canvasRef = useRef(null);
   const whiteboardBoxRef = useRef(null);
+  const chatEndRef = useRef(null);
 
   // States
   const [messages, setMessages] = useState([]);
@@ -234,6 +235,11 @@ export default function LiveClassRoom({ classData, onLeave }) {
     };
   }, [classData._id, user.role, user._id]);
 
+  // Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   // Actions
   const handleEndSessionDirectly = async () => {
     if (confirm("Are you sure you want to end this session for everyone?")) {
@@ -361,299 +367,506 @@ export default function LiveClassRoom({ classData, onLeave }) {
     if (rs.role === 'student') participantStreams.push({ id: rs.socketId, stream: rs.stream, label: rs.label, isLocal: false });
   });
 
-  // Responsive state
-  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 900);
-  const [showChat, setShowChat] = useState(false);
+  // ─── Responsive state ──────────────────────────
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [isTabletView, setIsTabletView] = useState(window.innerWidth >= 768 && window.innerWidth < 1024);
+  // Mobile tab: 'board' | 'video' | 'chat'
+  const [mobileTab, setMobileTab] = useState('board');
 
   useEffect(() => {
-    const handleResize = () => setIsMobileView(window.innerWidth < 900);
+    const handleResize = () => {
+      const w = window.innerWidth;
+      setIsMobileView(w < 768);
+      setIsTabletView(w >= 768 && w < 1024);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0f0f0f', color: '#fff', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
-      
-      {/* ─── Premium Header Bar ─── */}
+  // ─── Shared icon button style ──────────────────
+  const iconBtnStyle = (active = false, danger = false) => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+    padding: isMobileView ? '0.4rem' : '0.4rem 0.7rem',
+    background: danger ? 'rgba(220,38,38,0.15)' : active ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
+    border: `1px solid ${danger ? 'rgba(220,38,38,0.3)' : active ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`,
+    borderRadius: '8px',
+    color: danger ? '#fca5a5' : active ? '#86efac' : '#d1d5db',
+    cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+    minWidth: isMobileView ? '36px' : 'auto',
+    minHeight: '36px',
+  });
+
+  // ─── Mobile Bottom Tab Bar ─────────────────────
+  const MobileTabBar = () => (
+    <div style={{
+      display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+      background: 'rgba(17,17,17,0.98)', borderTop: '1px solid rgba(255,255,255,0.08)',
+      padding: '0.4rem 0', flexShrink: 0, zIndex: 30,
+      paddingBottom: 'max(0.4rem, env(safe-area-inset-bottom))',
+    }}>
+      {[
+        { key: 'board', icon: '📋', label: 'Board' },
+        { key: 'video', icon: '📹', label: 'Video' },
+        { key: 'chat', icon: '💬', label: `Chat${messages.length > 0 ? ` (${messages.length})` : ''}` },
+      ].map(tab => (
+        <button
+          key={tab.key}
+          onClick={() => setMobileTab(tab.key)}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem',
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: mobileTab === tab.key ? '#818cf8' : '#6b7280',
+            fontSize: '0.7rem', fontWeight: 700, padding: '0.3rem 0.8rem',
+            borderRadius: '8px', transition: 'all 0.2s',
+            ...(mobileTab === tab.key ? { background: 'rgba(99,102,241,0.1)' } : {}),
+          }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>{tab.icon}</span>
+          <span>{tab.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+
+  // ─── Whiteboard Panel (used in both layouts) ───
+  const WhiteboardPanel = ({ flexVal = 1, heightOverride }) => (
+    <div style={{
+      flex: flexVal, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      margin: isMobileView ? '0' : '0.5rem',
+      background: '#1a1a1a', borderRadius: isMobileView ? '0' : '12px',
+      border: isMobileView ? 'none' : '1px solid rgba(255,255,255,0.06)',
+      ...(heightOverride ? { height: heightOverride, flex: 'none' } : {}),
+    }}>
+      {/* Toolbar */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: isMobileView ? '0.6rem 1rem' : '0.8rem 1.5rem',
-        background: 'rgba(17,17,17,0.95)', backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, gap: '0.5rem', flexWrap: 'wrap', zIndex: 10
+        padding: isMobileView ? '0.35rem 0.6rem' : '0.5rem 0.8rem',
+        borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <span style={{ fontSize: isMobileView ? '0.7rem' : '0.8rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Whiteboard</span>
+          {isTeacherUser && (
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', overflow: 'hidden' }}>
+              <button 
+                onClick={() => setIsTypingMode(false)} 
+                style={{ padding: '0.25rem 0.5rem', background: !isTypingMode ? 'rgba(255,255,255,0.12)' : 'transparent', border: 'none', color: !isTypingMode ? '#fff' : '#6b7280', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+              >✏️ Draw</button>
+              <button 
+                onClick={() => setIsTypingMode(true)} 
+                style={{ padding: '0.25rem 0.5rem', background: isTypingMode ? 'rgba(255,255,255,0.12)' : 'transparent', border: 'none', color: isTypingMode ? '#fff' : '#6b7280', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+              >🔤 Type</button>
+            </div>
+          )}
+        </div>
+        
+        {isTeacherUser ? (
+          <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+            {['#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b'].map(color => (
+              <div 
+                key={color} 
+                onClick={() => setPenColor(color)}
+                style={{
+                  width: isMobileView ? '18px' : '20px', height: isMobileView ? '18px' : '20px',
+                  background: color, borderRadius: '50%', cursor: 'pointer',
+                  border: penColor === color ? '2px solid #6366f1' : '2px solid transparent',
+                  transition: 'border 0.2s', boxShadow: penColor === color ? '0 0 8px rgba(99,102,241,0.4)' : 'none',
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', background: 'rgba(255,255,255,0.06)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>View Only</span>
+        )}
+      </div>
+      
+      {/* Canvas */}
+      <div ref={whiteboardBoxRef} onClick={handleWhiteboardClick} style={{
+        position: 'relative', flex: 1, overflow: 'hidden', background: '#111',
+        cursor: isTeacherUser ? (isTypingMode ? 'text' : 'crosshair') : 'default',
+        touchAction: isTeacherUser && !isTypingMode ? 'none' : 'auto',
+      }}>
+        <ReactSketchCanvas
+          ref={canvasRef}
+          strokeWidth={isTeacherUser && !isTypingMode ? 4 : 0} 
+          strokeColor={penColor}
+          canvasColor="#111111"
+          onChange={handleWhiteboardChange}
+          readOnly={!isTeacherUser || isTypingMode} 
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}
+        />
+        
+        {/* Text Overlays */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 2 }}>
+          {textElements.map(el => (
+            <div key={el.id} style={{ position: 'absolute', left: el.x, top: el.y, color: el.color, fontSize: '1.2rem', fontWeight: 'bold' }}>
+              {el.text}
+            </div>
+          ))}
+          
+          {activeInputCoords && (
+            <form onSubmit={saveTextElement} style={{ position: 'absolute', left: activeInputCoords.x, top: activeInputCoords.y, pointerEvents: 'auto' }}>
+              <input 
+                autoFocus
+                type="text" 
+                value={activeInputText}
+                onChange={e => setActiveInputText(e.target.value)}
+                onBlur={saveTextElement}
+                style={{ background: 'transparent', border: '1px dashed rgba(255,255,255,0.3)', outline: 'none', color: penColor, fontSize: '1.2rem', fontWeight: 'bold', padding: '2px 4px' }}
+              />
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── Video Panel (broadcast + participants) ────
+  const VideoPanel = ({ isFullPanel = false }) => (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: '0.5rem', overflow: 'hidden',
+      ...(isFullPanel ? { flex: 1, padding: isMobileView ? '0.5rem' : '0.5rem' } : {}),
+    }}>
+      {/* Main Broadcast */}
+      <div style={{
+        height: isFullPanel ? (isMobileView ? '45%' : '220px') : '220px',
+        flexShrink: 0,
+        borderRadius: '12px', overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.08)', position: 'relative',
+      }}>
+        {mainBroadcastStream ? (
+          <VideoNode 
+            stream={mainBroadcastStream}
+            label={mainBroadcastLabel}
+            muted={isTeacherUser} 
+            isVideoMuted={isTeacherUser ? isVideoMuted : false}
+            onToggleAudio={isTeacherUser ? toggleAudio : null}
+            onToggleVideo={isTeacherUser ? toggleVideo : null}
+            isAudioMutedLocal={isAudioMuted}
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', background: '#1a1a1a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.8rem' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span style={{ color: '#6b7280', fontSize: '0.85rem', fontWeight: 600 }}>Waiting for Teacher...</span>
+            <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+              <div style={{ width: '50%', height: '100%', background: '#6366f1', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Participants Grid */}
+      {participantStreams.length > 0 && (
+        <div style={{
+          flex: isFullPanel ? 1 : 'none',
+          display: 'grid',
+          gridTemplateColumns: isMobileView 
+            ? (participantStreams.length === 1 ? '1fr' : 'repeat(2, 1fr)') 
+            : `repeat(auto-fill, minmax(${isFullPanel ? '140px' : '140px'}, 1fr))`,
+          gap: '0.5rem',
+          overflow: 'auto',
+          padding: isFullPanel ? '0' : '0',
+          ...(isFullPanel ? {} : { maxHeight: '130px' }),
+        }}>
+          {participantStreams.map(ps => (
+            <div key={ps.id} style={{
+              height: isFullPanel ? (isMobileView ? '120px' : '130px') : '100%',
+              borderRadius: '10px', overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              <VideoNode 
+                stream={ps.stream} 
+                label={ps.label} 
+                muted={ps.isLocal} 
+                isVideoMuted={ps.isLocal ? isVideoMuted : false} 
+                onToggleAudio={ps.isLocal ? toggleAudio : null}
+                onToggleVideo={ps.isLocal ? toggleVideo : null}
+                isAudioMutedLocal={ps.isLocal ? isAudioMuted : false}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ─── Chat Panel ────────────────────────────────
+  const ChatPanel = ({ isFullPanel = false }) => (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      background: '#1a1a1a',
+      borderRadius: isFullPanel ? (isMobileView ? '0' : '12px') : '12px',
+      border: isFullPanel && isMobileView ? 'none' : '1px solid rgba(255,255,255,0.06)',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: isMobileView ? '0.6rem 0.8rem' : '0.7rem 1rem',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Live Chat</span>
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', background: 'rgba(255,255,255,0.06)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{messages.length}</span>
+        </div>
+      </div>
+      
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        {messages.map((msg, i) => (
+          <div key={i} style={{ background: 'rgba(255,255,255,0.04)', padding: '0.5rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.15rem' }}>
+              <strong style={{ fontSize: '0.78rem', color: '#a5b4fc' }}>{msg.user}</strong>
+              <span style={{ fontSize: '0.6rem', color: '#4b5563' }}>{msg.time}</span>
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#d1d5db', lineHeight: 1.4, wordBreak: 'break-word' }}>{msg.text}</div>
+          </div>
+        ))}
+        {messages.length === 0 && (
+          <div style={{ textAlign: 'center', marginTop: '2rem', color: '#4b5563', fontSize: '0.85rem' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" style={{ margin: '0 auto 0.5rem', display: 'block' }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            No messages yet
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input */}
+      <form onSubmit={handleSendMessage} style={{
+        padding: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', gap: '0.4rem', flexShrink: 0,
+        paddingBottom: isFullPanel && isMobileView ? '0.5rem' : '0.5rem',
+      }}>
+        <input 
+          type="text" 
+          placeholder="Type a message..." 
+          style={{
+            flex: 1, padding: '0.5rem 0.7rem', background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px',
+            color: '#e5e7eb', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit',
+          }}
+          value={chatInput}
+          onChange={e => setChatInput(e.target.value)}
+        />
+        <button type="submit" style={{
+          padding: '0.5rem 0.7rem', background: '#6366f1', border: 'none',
+          borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+          minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </form>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════
+  return (
+    <div className="fade-in" style={{
+      display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw',
+      background: '#0f0f0f', color: '#fff', fontFamily: "'Inter', sans-serif",
+      overflow: 'hidden', position: 'fixed', top: 0, left: 0, zIndex: 9999,
+    }}>
+      
+      {/* ─── Header Bar ─── */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: isMobileView ? '0.45rem 0.6rem' : '0.8rem 1.5rem',
+        background: 'rgba(17,17,17,0.95)', backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, zIndex: 10,
+        gap: '0.4rem',
+      }}>
+        {/* Left side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobileView ? '0.4rem' : '0.8rem', minWidth: 0, flex: 1 }}>
           <button onClick={onLeave} style={{
-            display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem',
-            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: '8px', color: '#d1d5db', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s'
+            ...iconBtnStyle(),
+            padding: isMobileView ? '0.35rem 0.5rem' : '0.45rem 0.9rem',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-            Leave
+            {!isMobileView && <span>Leave</span>}
           </button>
 
           {isTeacherUser && (
             <button onClick={handleEndSessionDirectly} style={{
-              display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem',
-              background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.3)',
-              borderRadius: '8px', color: '#fca5a5', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
+              ...iconBtnStyle(false, true),
+              padding: isMobileView ? '0.35rem 0.5rem' : '0.45rem 0.9rem',
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
-              End For All
+              {!isMobileView && <span>End For All</span>}
             </button>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', boxShadow: '0 0 8px rgba(239,68,68,0.6)', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ef4444', letterSpacing: '0.05em' }}>LIVE</span>
+          {/* LIVE indicator + title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flex: 1 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+              <span style={{ width: '7px', height: '7px', background: '#ef4444', borderRadius: '50%', boxShadow: '0 0 8px rgba(239,68,68,0.6)', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+              <span style={{ fontSize: isMobileView ? '0.7rem' : '0.85rem', fontWeight: 800, color: '#ef4444', letterSpacing: '0.05em' }}>LIVE</span>
             </span>
-            <h2 style={{ margin: 0, fontSize: isMobileView ? '0.95rem' : '1.1rem', fontWeight: 700, color: '#f9fafb', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobileView ? '140px' : '300px' }}>
+            <h2 style={{
+              margin: 0, fontSize: isMobileView ? '0.8rem' : '1.1rem', fontWeight: 700, color: '#f9fafb',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
+            }}>
               {classData.title}
             </h2>
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.5rem', background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', borderRadius: '4px', textTransform: 'uppercase' }}>
-              {classData.subject} · {classData.section}
-            </span>
+            {!isMobileView && (
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.5rem', background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', borderRadius: '4px', textTransform: 'uppercase', flexShrink: 0 }}>
+                {classData.subject} · {classData.section}
+              </span>
+            )}
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {/* Right side controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
           {isTeacherUser && (
             <>
-              <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: '4px' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 {remoteStreams.filter(s => s.role === 'student').length}
               </span>
-              <button onClick={clearWhiteboard} style={{
-                padding: '0.4rem 0.7rem', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '6px', color: '#d1d5db', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: '3px' }}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                Clear
+              <button onClick={clearWhiteboard} style={iconBtnStyle()}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                {!isMobileView && <span>Clear</span>}
               </button>
-              <button onClick={toggleScreenShare} style={{
-                padding: '0.4rem 0.7rem',
-                background: isScreenSharing ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
-                border: `1px solid ${isScreenSharing ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: '6px', color: isScreenSharing ? '#86efac' : '#d1d5db', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: '3px' }}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                {isScreenSharing ? 'Stop Share' : 'Screen'}
-              </button>
+              {!isMobileView && (
+                <button onClick={toggleScreenShare} style={iconBtnStyle(isScreenSharing)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                  {isScreenSharing ? 'Stop Share' : 'Screen'}
+                </button>
+              )}
             </>
-          )}
-
-          {/* Mobile Chat Toggle */}
-          {isMobileView && (
-            <button onClick={() => setShowChat(!showChat)} style={{
-              padding: '0.4rem 0.7rem', background: showChat ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.08)',
-              border: `1px solid ${showChat ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: '6px', color: showChat ? '#a5b4fc' : '#d1d5db', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle' }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              {messages.length > 0 && <span style={{ marginLeft: '4px', background: '#6366f1', color: '#fff', borderRadius: '99px', padding: '0 5px', fontSize: '0.7rem' }}>{messages.length}</span>}
-            </button>
           )}
         </div>
       </div>
 
-      {/* ─── Main Content Area ─── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', flexDirection: isMobileView ? 'column' : 'row' }}>
-        
-        {/* Left Column: Whiteboard + Participants */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          
-          {/* Whiteboard */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: '0.5rem', background: '#1a1a1a', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            
-            {/* Whiteboard Toolbar */}
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '0.5rem 0.8rem', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0
-            }}>
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Whiteboard</span>
-                {isTeacherUser && (
-                  <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', overflow: 'hidden' }}>
-                    <button 
-                      onClick={() => setIsTypingMode(false)} 
-                      style={{ padding: '0.3rem 0.6rem', background: !isTypingMode ? 'rgba(255,255,255,0.12)' : 'transparent', border: 'none', color: !isTypingMode ? '#fff' : '#6b7280', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                    >✏️ Draw</button>
-                    <button 
-                      onClick={() => setIsTypingMode(true)} 
-                      style={{ padding: '0.3rem 0.6rem', background: isTypingMode ? 'rgba(255,255,255,0.12)' : 'transparent', border: 'none', color: isTypingMode ? '#fff' : '#6b7280', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                    >🔤 Type</button>
-                  </div>
-                )}
+      {/* ─── Main Content ─── */}
+      {isMobileView ? (
+        /* ═══ MOBILE LAYOUT: Tab-based ═══ */
+        <>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {mobileTab === 'board' && <WhiteboardPanel />}
+            {mobileTab === 'video' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '0.5rem' }}>
+                <VideoPanel isFullPanel />
               </div>
-              
-              {isTeacherUser ? (
-                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  {['#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b'].map(color => (
-                    <div 
-                      key={color} 
-                      onClick={() => setPenColor(color)}
-                      style={{ width: '20px', height: '20px', background: color, borderRadius: '50%', cursor: 'pointer', border: penColor === color ? '2px solid #6366f1' : '2px solid transparent', transition: 'border 0.2s', boxShadow: penColor === color ? '0 0 8px rgba(99,102,241,0.4)' : 'none' }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>View Only</span>
-              )}
-            </div>
-            
-            {/* Canvas Area */}
-            <div ref={whiteboardBoxRef} onClick={handleWhiteboardClick} style={{ position: 'relative', flex: 1, cursor: isTeacherUser ? (isTypingMode ? 'text' : 'crosshair') : 'default', overflow: 'hidden', background: '#111' }}>
-              <ReactSketchCanvas
-                ref={canvasRef}
-                strokeWidth={isTeacherUser && !isTypingMode ? 4 : 0} 
-                strokeColor={penColor}
-                canvasColor="#111111"
-                onChange={handleWhiteboardChange}
-                readOnly={!isTeacherUser || isTypingMode} 
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}
-              />
-              
-              {/* Text Overlays */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 2 }}>
-                {textElements.map(el => (
-                  <div key={el.id} style={{ position: 'absolute', left: el.x, top: el.y, color: el.color, fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {el.text}
-                  </div>
-                ))}
-                
-                {activeInputCoords && (
-                  <form onSubmit={saveTextElement} style={{ position: 'absolute', left: activeInputCoords.x, top: activeInputCoords.y, pointerEvents: 'auto' }}>
-                    <input 
-                      autoFocus
-                      type="text" 
-                      value={activeInputText}
-                      onChange={e => setActiveInputText(e.target.value)}
-                      onBlur={saveTextElement}
-                      style={{ background: 'transparent', border: '1px dashed rgba(255,255,255,0.3)', outline: 'none', color: penColor, fontSize: '1.2rem', fontWeight: 'bold', padding: '2px 4px' }}
-                    />
-                  </form>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Participants Strip */}
-          {participantStreams.length > 0 && (
-            <div style={{
-              display: 'flex', gap: '0.5rem', padding: '0.5rem',
-              overflowX: 'auto', flexShrink: 0, height: isMobileView ? '100px' : '130px', alignItems: 'stretch'
-            }}>
-              {participantStreams.map(ps => (
-                <div key={ps.id} style={{ width: isMobileView ? '130px' : '170px', flexShrink: 0, height: '100%', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <VideoNode 
-                    stream={ps.stream} 
-                    label={ps.label} 
-                    muted={ps.isLocal} 
-                    isVideoMuted={ps.isLocal ? isVideoMuted : false} 
-                    onToggleAudio={ps.isLocal ? toggleAudio : null}
-                    onToggleVideo={ps.isLocal ? toggleVideo : null}
-                    isAudioMutedLocal={ps.isLocal ? isAudioMuted : false}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Broadcast + Chat (desktop: sidebar, mobile: overlay) */}
-        <div style={{
-          display: isMobileView ? (showChat ? 'flex' : 'none') : 'flex',
-          flexDirection: 'column', width: isMobileView ? '100%' : '320px',
-          gap: '0.5rem', overflow: 'hidden', padding: '0.5rem', flexShrink: 0,
-          ...(isMobileView ? { position: 'absolute', bottom: 0, left: 0, right: 0, top: '60px', zIndex: 20, background: 'rgba(15,15,15,0.97)', backdropFilter: 'blur(16px)' } : {})
-        }}>
-          
-          {/* Main Broadcast Focus (Teacher) */}
-          <div style={{
-            height: isMobileView ? '180px' : '220px', flexShrink: 0,
-            borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', position: 'relative'
-          }}>
-            {mainBroadcastStream ? (
-              <VideoNode 
-                stream={mainBroadcastStream}
-                label={mainBroadcastLabel}
-                muted={isTeacherUser} 
-                isVideoMuted={isTeacherUser ? isVideoMuted : false}
-                onToggleAudio={isTeacherUser ? toggleAudio : null}
-                onToggleVideo={isTeacherUser ? toggleVideo : null}
-                isAudioMutedLocal={isAudioMuted}
-              />
-            ) : (
-              <div style={{ width: '100%', height: '100%', background: '#1a1a1a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.8rem' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                <span style={{ color: '#6b7280', fontSize: '0.85rem', fontWeight: 600 }}>Waiting for Teacher...</span>
-                <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                  <div style={{ width: '50%', height: '100%', background: '#6366f1', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                </div>
+            )}
+            {mobileTab === 'chat' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <ChatPanel isFullPanel />
               </div>
             )}
           </div>
 
-          {/* Chat Panel */}
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            background: '#1a1a1a', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)'
-          }}>
-            {/* Chat Header */}
-            <div style={{ padding: '0.7rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Live Chat</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', background: 'rgba(255,255,255,0.06)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{messages.length}</span>
-              </div>
-              {isMobileView && (
-                <button onClick={() => setShowChat(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+          {/* Mobile media controls floating bar (persistent across tabs) */}
+          {localStream && (
+            <div style={{
+              display: 'flex', justifyContent: 'center', gap: '0.6rem', padding: '0.4rem',
+              background: 'rgba(17,17,17,0.95)', borderTop: '1px solid rgba(255,255,255,0.06)',
+              flexShrink: 0,
+            }}>
+              <button onClick={toggleAudio} style={{
+                width: '44px', height: '44px', borderRadius: '50%', border: 'none',
+                background: isAudioMuted ? '#ef4444' : 'rgba(255,255,255,0.12)',
+                color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.1rem', transition: 'all 0.2s',
+              }}>
+                {isAudioMuted ? '🔇' : '🎤'}
+              </button>
+              <button onClick={toggleVideo} style={{
+                width: '44px', height: '44px', borderRadius: '50%', border: 'none',
+                background: isVideoMuted ? '#ef4444' : 'rgba(255,255,255,0.12)',
+                color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.1rem', transition: 'all 0.2s',
+              }}>
+                {isVideoMuted ? '🚫' : '📷'}
+              </button>
+              {isTeacherUser && (
+                <button onClick={toggleScreenShare} style={{
+                  width: '44px', height: '44px', borderRadius: '50%', border: 'none',
+                  background: isScreenSharing ? '#22c55e' : 'rgba(255,255,255,0.12)',
+                  color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '1.1rem', transition: 'all 0.2s',
+                }}>
+                  🖥️
+                </button>
               )}
             </div>
+          )}
+
+          <MobileTabBar />
+        </>
+      ) : (
+        /* ═══ DESKTOP / TABLET LAYOUT ═══ */
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Left Column: Whiteboard + Participants */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            <WhiteboardPanel />
             
-            {/* Chat Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {messages.map((msg, i) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.04)', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.15rem' }}>
-                    <strong style={{ fontSize: '0.8rem', color: '#a5b4fc' }}>{msg.user}</strong>
-                    <span style={{ fontSize: '0.65rem', color: '#4b5563' }}>{msg.time}</span>
+            {/* Participants Strip */}
+            {participantStreams.length > 0 && (
+              <div style={{
+                display: 'flex', gap: '0.5rem', padding: '0.5rem',
+                overflowX: 'auto', flexShrink: 0,
+                height: isTabletView ? '110px' : '130px', alignItems: 'stretch',
+              }}>
+                {participantStreams.map(ps => (
+                  <div key={ps.id} style={{
+                    width: isTabletView ? '145px' : '170px', flexShrink: 0, height: '100%',
+                    borderRadius: '10px', overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}>
+                    <VideoNode 
+                      stream={ps.stream} 
+                      label={ps.label} 
+                      muted={ps.isLocal} 
+                      isVideoMuted={ps.isLocal ? isVideoMuted : false} 
+                      onToggleAudio={ps.isLocal ? toggleAudio : null}
+                      onToggleVideo={ps.isLocal ? toggleVideo : null}
+                      isAudioMutedLocal={ps.isLocal ? isAudioMuted : false}
+                    />
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: '#d1d5db', lineHeight: 1.4 }}>{msg.text}</div>
-                </div>
-              ))}
-              {messages.length === 0 && (
-                <div style={{ textAlign: 'center', marginTop: '2rem', color: '#4b5563', fontSize: '0.85rem' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" style={{ margin: '0 auto 0.5rem', display: 'block' }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  No messages yet
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Broadcast + Chat */}
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            width: isTabletView ? '280px' : '320px',
+            gap: '0.5rem', overflow: 'hidden', padding: '0.5rem', flexShrink: 0,
+          }}>
+            {/* Main Broadcast */}
+            <div style={{
+              height: isTabletView ? '190px' : '220px', flexShrink: 0,
+              borderRadius: '12px', overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.08)', position: 'relative',
+            }}>
+              {mainBroadcastStream ? (
+                <VideoNode 
+                  stream={mainBroadcastStream}
+                  label={mainBroadcastLabel}
+                  muted={isTeacherUser} 
+                  isVideoMuted={isTeacherUser ? isVideoMuted : false}
+                  onToggleAudio={isTeacherUser ? toggleAudio : null}
+                  onToggleVideo={isTeacherUser ? toggleVideo : null}
+                  isAudioMutedLocal={isAudioMuted}
+                />
+              ) : (
+                <div style={{ width: '100%', height: '100%', background: '#1a1a1a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.8rem' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                  <span style={{ color: '#6b7280', fontSize: '0.85rem', fontWeight: 600 }}>Waiting for Teacher...</span>
+                  <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                    <div style={{ width: '50%', height: '100%', background: '#6366f1', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Chat Input */}
-            <form onSubmit={handleSendMessage} style={{ padding: '0.6rem', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
-              <input 
-                type="text" 
-                placeholder="Type a message..." 
-                style={{
-                  flex: 1, padding: '0.5rem 0.8rem', background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px',
-                  color: '#e5e7eb', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit'
-                }}
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-              />
-              <button type="submit" style={{
-                padding: '0.5rem 0.8rem', background: '#6366f1', border: 'none',
-                borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              </button>
-            </form>
+            <ChatPanel />
           </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }
