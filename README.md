@@ -3,7 +3,7 @@
 A modular full-stack Smart Campus web platform using MongoDB, Express, React, and Node.js.
 
 ## Monorepo Structure
-
+..
 - `client/` React + Vite frontend
 - `server/` Express + MongoDB backend
 - `docs/` architecture and planning notes
