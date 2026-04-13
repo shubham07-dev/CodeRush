@@ -194,6 +194,11 @@ export default function CampusNavigatePage({ onBack }) {
           <div style="font-size:11px; color:#888; border-top:1px solid #eee; padding-top:4px; margin-top:4px;">
             📍 ${bld.lat.toFixed(6)}, ${bld.lng.toFixed(6)} &nbsp;|&nbsp; 🏷️ ${bld.category}
           </div>
+          <button onclick="document.dispatchEvent(new CustomEvent('campus-navigate', { detail: '${bld.id}' }))" 
+            style="margin-top:8px; width:100%; padding:0.4rem; border:none; border-radius:6px; background:#b49359; color:white; font-weight:600; cursor:pointer;"
+          >
+            🧭 Navigate Here
+          </button>
         </div>
       `);
 
@@ -300,6 +305,41 @@ export default function CampusNavigatePage({ onBack }) {
     });
   }, [userPosition]);
 
+  const [pendingRoute, setPendingRoute] = useState(null);
+
+  const handleNavigateClick = useCallback((bld) => {
+    if (!userPosition) {
+      if (!locating && window.confirm(`Activate GPS to find your route to ${bld.name}?`)) {
+        setPendingRoute(bld);
+        startLocating();
+      } else if (locating) {
+        setPendingRoute(bld);
+      }
+    } else {
+      calculateRoute(bld);
+    }
+  }, [userPosition, locating, startLocating, calculateRoute]);
+
+  useEffect(() => {
+    if (userPosition && pendingRoute) {
+      calculateRoute(pendingRoute);
+      setPendingRoute(null);
+    }
+  }, [userPosition, pendingRoute, calculateRoute]);
+
+  useEffect(() => {
+    const handleNav = (e) => {
+      const bldId = e.detail;
+      const bld = BUILDINGS.find(b => b.id === bldId);
+      if (bld) {
+        setSelectedBuilding(bld);
+        handleNavigateClick(bld);
+      }
+    };
+    document.addEventListener('campus-navigate', handleNav);
+    return () => document.removeEventListener('campus-navigate', handleNav);
+  }, [handleNavigateClick]);
+
   // ── Filtered buildings for search ───────────────────
   const filteredBuildings = BUILDINGS.filter(b =>
     b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -324,6 +364,11 @@ export default function CampusNavigatePage({ onBack }) {
         }
         .campus-marker { background: transparent !important; border: none !important; }
         .leaflet-routing-container { display: none !important; }
+        @media (max-width: 768px) {
+          .campus-legend.navigating {
+            display: none !important;
+          }
+        }
       `}</style>
 
       {/* ── Map Container ─── */}
@@ -364,18 +409,25 @@ export default function CampusNavigatePage({ onBack }) {
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
             <button
-              onClick={startLocating}
-              disabled={locating}
+              onClick={() => {
+                if (userPosition && mapInstanceRef.current) {
+                  mapInstanceRef.current.flyTo(userPosition, 18, { duration: 0.8 });
+                } else if (!locating) {
+                  if (window.confirm("We need your location to show where you are. Activate GPS?")) {
+                    startLocating();
+                  }
+                }
+              }}
               style={{
-                flex: 1, padding: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                background: locating ? '#38a169' : '#3182ce', color: 'white', fontWeight: 600, fontSize: '0.8rem',
+                flex: 1, padding: '0.5rem', borderRadius: '8px', border: 'none', cursor: (locating && !userPosition) ? 'wait' : 'pointer',
+                background: userPosition ? '#38a169' : '#3182ce', color: 'white', fontWeight: 600, fontSize: '0.8rem',
               }}
             >
-              {locating ? '✅ GPS Active' : '📍 My Location'}
+              📍 My Location
             </button>
-            {selectedBuilding && userPosition && (
+            {selectedBuilding && (
               <button
-                onClick={() => calculateRoute(selectedBuilding)}
+                onClick={() => handleNavigateClick(selectedBuilding)}
                 style={{
                   flex: 1, padding: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
                   background: '#b49359', color: 'white', fontWeight: 600, fontSize: '0.8rem',
@@ -388,18 +440,23 @@ export default function CampusNavigatePage({ onBack }) {
         </div>
 
         {/* Building List */}
+        {searchQuery.trim().length > 0 && (
         <div style={{
           background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)',
           borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
           maxHeight: '350px', overflowY: 'auto',
         }}>
-          {filteredBuildings.map(bld => {
-            const style = CATEGORY_STYLES[bld.category];
-            const isSelected = selectedBuilding?.id === bld.id;
-            return (
-              <button
-                key={bld.id}
-                onClick={() => setSelectedBuilding(bld)}
+          {filteredBuildings.length > 0 ? (
+            filteredBuildings.map(bld => {
+              const style = CATEGORY_STYLES[bld.category];
+              const isSelected = selectedBuilding?.id === bld.id;
+              return (
+                <button
+                  key={bld.id}
+                  onClick={() => {
+                    setSelectedBuilding(bld);
+                    setSearchQuery(''); // Hide dropdown and show map after selection
+                  }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%',
                   padding: '0.7rem 1rem', border: 'none', borderBottom: '1px solid #f0f0f0',
@@ -421,10 +478,16 @@ export default function CampusNavigatePage({ onBack }) {
                     {bld.info}
                   </div>
                 </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })
+          ) : (
+            <div style={{ padding: '1.2rem', textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>
+              No locations found matching "{searchQuery}"
+            </div>
+          )}
         </div>
+        )}
       </div>
 
       {/* ── Route Info Card (Bottom-Center) ─── */}
@@ -470,7 +533,7 @@ export default function CampusNavigatePage({ onBack }) {
       )}
 
       {/* ── Legend (Bottom-Right) ─── */}
-      <div style={{
+      <div className={`campus-legend ${routeInfo ? 'navigating' : ''}`} style={{
         position: 'absolute', bottom: '1.5rem', right: '1rem', zIndex: 1000,
         background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
         borderRadius: '10px', padding: '0.7rem 1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
