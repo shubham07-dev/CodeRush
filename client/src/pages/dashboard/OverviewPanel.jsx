@@ -64,7 +64,12 @@ export default function OverviewPanel({ onNavigate }) {
     <>
       {/* ── Greeting ──────────────────────────────────── */}
       <section className="mod-hero" style={{ position: 'relative' }}>
-        <div style={{ position: 'absolute', right: '3rem', top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
+        <style dangerouslySetInnerHTML={{__html: `
+          @media (max-width: 768px) {
+            .desktop-only-avatar { display: none !important; }
+          }
+        `}} />
+        <div className="desktop-only-avatar" style={{ position: 'absolute', right: '3rem', top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
           <div style={{ position: 'relative', width: '100px', height: '100px' }}>
             <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: `4px solid ${theme.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdfdfd', fontSize: '3rem', fontWeight: 'bold', color: theme.accent, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
               {user.profilePicture ? (

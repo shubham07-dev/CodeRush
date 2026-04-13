@@ -38,12 +38,13 @@ const NAV_ITEMS = [
 ];
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, fetchMe } = useAuth();
   const [activeModule, setActiveModule] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [badgeCounts, setBadgeCounts] = useState({});
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   // Load "last seen" counts from localStorage
   const getSeenCounts = () => {
@@ -96,6 +97,31 @@ export default function DashboardPage() {
       // quiet fail
     }
   };
+
+  async function handleAvatarUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      await api.post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      fetchMe();
+      setShowProfileDropdown(false);
+    } catch (err) {
+      alert('Failed to upload picture: ' + (err.response?.data?.message || err.message));
+    }
+  }
+
+  async function handleAvatarRemove() {
+    if (!window.confirm('Are you sure you want to remove your profile picture?')) return;
+    try {
+      await api.delete('/users/me/avatar');
+      fetchMe();
+      setShowProfileDropdown(false);
+    } catch (err) {
+      alert('Failed to remove picture');
+    }
+  }
 
   const theme = ROLE_THEMES[user?.role] || ROLE_THEMES.student;
 
@@ -287,11 +313,43 @@ export default function DashboardPage() {
             </div>
 
             {/* Profile Avatar */}
-            <div
-              className="dash-avatar-sm"
-              style={{ background: `linear-gradient(135deg, ${theme.accent}, #f4e8d1)` }}
-            >
-              {user.fullName.charAt(0).toUpperCase()}
+            <div style={{ position: 'relative' }}>
+              <div
+                className="dash-avatar-sm"
+                style={{ 
+                  background: `linear-gradient(135deg, ${theme.accent}, #f4e8d1)`, 
+                  cursor: 'pointer',
+                  overflow: 'hidden'
+                }}
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              >
+                {user.profilePicture ? (
+                  <img src={user.profilePicture} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  user.fullName.charAt(0).toUpperCase()
+                )}
+              </div>
+
+              {showProfileDropdown && (
+                <div className="card fade-in" style={{
+                  position: 'absolute', top: '100%', right: 0, width: '180px', zIndex: 100, 
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: '0.5rem', background: '#fff',
+                  display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.5rem'
+                }}>
+                  <label style={{ padding: '0.6rem', cursor: 'pointer', borderRadius: '4px', textAlign: 'left', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }} className="btn-ghost">
+                    ✏️ Upload Picture
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
+                  </label>
+                  {user.profilePicture && (
+                    <button style={{ padding: '0.6rem', cursor: 'pointer', borderRadius: '4px', textAlign: 'left', fontWeight: '500', color: '#e53e3e', display: 'flex', alignItems: 'center', gap: '0.5rem' }} className="btn-ghost" onClick={handleAvatarRemove}>
+                      ✖ Remove Picture
+                    </button>
+                  )}
+                  <button style={{ padding: '0.6rem', cursor: 'pointer', borderRadius: '4px', textAlign: 'left', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid #efefef', marginTop: '0.2rem' }} className="btn-ghost" onClick={logout}>
+                    🚪 Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
