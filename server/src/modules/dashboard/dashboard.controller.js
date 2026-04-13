@@ -4,6 +4,7 @@ import { User } from '../auth/auth.model.js';
 import { OnlineClass } from '../onlineClass/onlineClass.model.js';
 import { Notice } from '../notice/notice.model.js';
 import { Practical, PracticalSubmission } from '../practical/practical.model.js';
+import { Complaint } from '../complaint/complaint.model.js';
 
 // ── Badge counts for sidebar (student-only) ─────────────
 // Returns raw totals. The frontend tracks "last seen" counts
@@ -72,6 +73,12 @@ async function getStudentDashboard(user) {
     date: { $gte: startOfToday }
   });
 
+  // Live classes for student's section
+  const liveClassesCount = user.section ? await OnlineClass.countDocuments({ section: user.section, status: 'live' }) : 0;
+  
+  // Raised complaints by the student
+  const raisedComplaintsCount = await Complaint.countDocuments({ student: user._id });
+
   return {
     headline: 'Student Command Center',
     subtitle: 'Track academics, mobility, and wellbeing in one intelligent workspace.',
@@ -83,19 +90,22 @@ async function getStudentDashboard(user) {
     ],
     focusCards: [
       {
-        title: 'Bus ETA',
-        value: `${vary(12, 6, 3, 30)} min`,
-        note: 'Gate A shuttle synced'
+        title: 'Pending Assignments',
+        value: `${pendingAssignments}`,
+        note: pendingAssignments > 0 ? 'Requires attention' : 'All caught up',
+        link: 'assignments'
       },
       {
-        title: 'Library Seats',
-        value: `${vary(128, 40, 20, 280)} free`,
-        note: 'Real-time occupancy'
+        title: 'Live Classes',
+        value: `${liveClassesCount}`,
+        note: liveClassesCount > 0 ? 'Join now' : 'No ongoing classes',
+        link: 'classes'
       },
       {
-        title: 'Mentor Alerts',
-        value: `0 unread`,
-        note: 'New guidance updates'
+        title: 'Raised Complaints',
+        value: `${raisedComplaintsCount}`,
+        note: 'Track your issues',
+        link: 'complaints'
       }
     ]
   };

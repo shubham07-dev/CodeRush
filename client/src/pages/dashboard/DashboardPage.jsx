@@ -144,7 +144,7 @@ export default function DashboardPage() {
       case 'users':
         return <UserManagementPage />;
       default:
-        return <OverviewPanel />;
+        return <OverviewPanel onNavigate={handleNavClick} />;
     }
   }
 

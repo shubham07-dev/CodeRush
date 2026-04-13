@@ -12,7 +12,7 @@ const ROLE_THEMES = {
   admin: { emoji: '🛡️', accent: '#7f6438', label: 'Admin' }
 };
 
-export default function OverviewPanel() {
+export default function OverviewPanel({ onNavigate }) {
   const { user, fetchMe } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -117,7 +117,14 @@ export default function OverviewPanel() {
             <h3 className="mod-section-title">Focus Areas</h3>
             <div className="mod-cards-row">
               {dashboard.focusCards?.map((c) => (
-                <div key={c.title} className="mod-focus-card">
+                <div 
+                  key={c.title} 
+                  className="mod-focus-card"
+                  onClick={() => {
+                    if (c.link && onNavigate) onNavigate(c.link);
+                  }}
+                  style={{ cursor: c.link ? 'pointer' : 'default', transition: 'transform 0.2s', ...(c.link && { '&:hover': { transform: 'translateY(-2px)' } }) }}
+                >
                   <div className="mod-focus-value">{c.value}</div>
                   <div className="mod-focus-title">{c.title}</div>
                   <div className="mod-focus-note">{c.note}</div>
